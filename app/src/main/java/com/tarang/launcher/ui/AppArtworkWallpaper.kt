@@ -40,7 +40,6 @@ fun AppArtworkWallpaper(
     packageName: String,
     isDark: Boolean,
     modifier: Modifier = Modifier,
-    reduceMotion: Boolean = false,
 ) {
     val context = LocalContext.current
     // Shuffle so a re-hover doesn't always open on the same poster.
@@ -55,10 +54,7 @@ fun AppArtworkWallpaper(
     }
 
     var index by remember(packageName) { mutableIntStateOf(0) }
-    // Reduce motion: hold a single poster (no auto-advance, no Ken-Burns drift).
-    if (!reduceMotion) {
-        LaunchedEffectSlideshow(size = uris.size) { index = (index + 1) % uris.size }
-    }
+    LaunchedEffectSlideshow(size = uris.size) { index = (index + 1) % uris.size }
 
     // Keep the previous bitmap on screen until the next one finishes loading (no black flashes).
     val image by produceState<ImageBitmap?>(initialValue = null, key1 = packageName, key2 = index) {
@@ -72,7 +68,7 @@ fun AppArtworkWallpaper(
         animationSpec = infiniteRepeatable(tween(12_000, easing = LinearEasing), RepeatMode.Reverse),
         label = "kbScale",
     )
-    val scale = if (reduceMotion) 1f else drift
+    val scale = drift
 
     Box(modifier = modifier.fillMaxSize().background(Color.Black)) {
         Crossfade(targetState = image, animationSpec = tween(FADE_MS), label = "poster") { img ->

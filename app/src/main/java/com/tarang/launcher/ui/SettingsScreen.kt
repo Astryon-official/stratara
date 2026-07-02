@@ -7,6 +7,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -40,10 +41,12 @@ import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.input.key.Key
@@ -108,6 +111,7 @@ private enum class SettingsSection(val title: String) {
  * (not as a modal), so D-pad focus can't leak to the grid behind it. Colors come from
  * [LocalLauncherColors] so the page follows the light/dark theme.
  */
+@OptIn(ExperimentalComposeUiApi::class)
 @Composable
 fun SettingsScreen(
     settings: LauncherSettings,
@@ -122,8 +126,6 @@ fun SettingsScreen(
     onToggleArtworkApp: (String, Boolean) -> Unit,
     theme: ThemeMode,
     onTheme: (ThemeMode) -> Unit,
-    reduceMotion: Boolean,
-    onReduceMotion: (Boolean) -> Unit,
     onAnimStyle: (AnimStyle) -> Unit,
     hiddenApps: List<AppInfo>,
     onUnhideApp: (String) -> Unit,
@@ -186,8 +188,24 @@ fun SettingsScreen(
 
             Spacer(Modifier.width(40.dp))
 
-            // Right: detail pane for the selected section.
-            Box(modifier = Modifier.fillMaxSize()) {
+            // Right: detail pane for the selected section. The pane is a focus group that swallows
+            // vertical exits: from its last (or first) item a D-pad down/up search would otherwise
+            // widen to the whole screen and land on the section rail, whose rows sit lower/higher on
+            // screen. Left still exits to the rail.
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .focusProperties {
+                        exit = { direction ->
+                            if (direction == FocusDirection.Down || direction == FocusDirection.Up) {
+                                FocusRequester.Cancel
+                            } else {
+                                FocusRequester.Default
+                            }
+                        }
+                    }
+                    .focusGroup(),
+            ) {
                 when (section) {
                     SettingsSection.APPEARANCE -> AppearancePane(
                         settings = settings,
@@ -201,8 +219,6 @@ fun SettingsScreen(
                         onToggleArtworkApp = onToggleArtworkApp,
                         theme = theme,
                         onTheme = onTheme,
-                        reduceMotion = reduceMotion,
-                        onReduceMotion = onReduceMotion,
                         onAnimStyle = onAnimStyle,
                         onUseFrameArtWallpaper = onUseFrameArtWallpaper,
                         nowPlaying = settings.nowPlaying,
@@ -325,8 +341,6 @@ private fun AppearancePane(
     onToggleArtworkApp: (String, Boolean) -> Unit,
     theme: ThemeMode,
     onTheme: (ThemeMode) -> Unit,
-    reduceMotion: Boolean,
-    onReduceMotion: (Boolean) -> Unit,
     onAnimStyle: (AnimStyle) -> Unit,
     onUseFrameArtWallpaper: (Boolean) -> Unit,
     nowPlaying: Boolean,
@@ -419,18 +433,6 @@ private fun AppearancePane(
                 ToggleChip("$n", n == settings.columns) { onColumns(n) }
             }
         }
-
-        SectionLabel("Reduce motion")
-        Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-            ToggleChip("On", reduceMotion) { onReduceMotion(true) }
-            ToggleChip("Off", !reduceMotion) { onReduceMotion(false) }
-        }
-        Text(
-            "Calms the interface: no Frame Art drift, no artwork slideshow, app-launch animation off, and tiles snap into focus instead of springing.",
-            color = LocalLauncherColors.current.textDim,
-            fontSize = 13.sp,
-            modifier = Modifier.fillMaxWidth(0.85f),
-        )
 
         SectionLabel("Glass blur")
         Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {

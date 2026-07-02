@@ -25,7 +25,7 @@ fun FrameArtScreensaver(
     modifier: Modifier = Modifier,
 ) {
     val nav = remember { FrameNavState() }
-    val motionOn = settings.frameMotion && !settings.reduceMotion
+    val motionOn = settings.frameMotion
     val frameConfigured = (settings.frameSource == FrameSource.FOLDER && settings.frameFolderId != null) ||
         (settings.frameSource == FrameSource.SINGLE && settings.frameImagePath != null)
     val weather = rememberWeather(

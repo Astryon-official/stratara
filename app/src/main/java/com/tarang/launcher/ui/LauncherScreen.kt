@@ -8,7 +8,6 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -253,14 +252,14 @@ fun LauncherScreen(
     // follows the transition progress, read at draw time, so the float eases in on entry and glides
     // back to centre on exit rather than snapping when a key flips it off. At rest (chrome up) it's
     // disposed entirely — a still wallpaper costs nothing. Cycling still only runs when fully settled.
-    val motionOn = settings.frameMotion && !settings.reduceMotion
+    val motionOn = settings.frameMotion
     val artDrift = framePartly && motionOn
     val artDriftAmount: () -> Float = { frameProgress.value }
     val artCycle = frameSettled
 
     // App launch / return choreography. The system grows the app window out of the tapped tile while the
     // launcher chrome drops/rises away on its own staggered timelines — the dock leads, the top bar
-    // trails. 0 = home, 1 = launched (chrome gone). Skipped when Reduce motion is on.
+    // trails. 0 = home, 1 = launched (chrome gone).
     val dockLaunch = remember { Animatable(0f) }
     val topBarLaunch = remember { Animatable(0f) }
     var awaitingReturn by remember { mutableStateOf(false) }
@@ -275,7 +274,7 @@ fun LauncherScreen(
         // No window scale-up — the app opens with the system default while the launcher chrome does the
         // dock-drop / bar-rise dissolve (the same motion as entering Frame Art).
         val launched = viewModel.launchApp(packageName, null)
-        if (launched && !settings.reduceMotion) {
+        if (launched) {
             awaitingReturn = true
             launchTick++
         }
@@ -379,7 +378,6 @@ fun LauncherScreen(
                     app != null -> AppArtworkWallpaper(
                         packageName = app,
                         isDark = isDark,
-                        reduceMotion = settings.reduceMotion,
                         modifier = Modifier.fillMaxSize(),
                     )
 
@@ -465,8 +463,6 @@ fun LauncherScreen(
                     onToggleArtworkApp = viewModel::setArtworkApp,
                     theme = settings.theme,
                     onTheme = viewModel::setTheme,
-                    reduceMotion = settings.reduceMotion,
-                    onReduceMotion = viewModel::setReduceMotion,
                     onAnimStyle = viewModel::setAnimStyle,
                     hiddenApps = uiState.allApps.filter { it.packageName in settings.hiddenApps },
                     onUnhideApp = { viewModel.setAppHidden(it, false) },
@@ -531,7 +527,6 @@ fun LauncherScreen(
                             // Full quality (edge refraction) only at rest; drop it while anything moves.
                             glassRefract = !transitioning && !frameMoving,
                             glassBlur = settings.glassBlur,
-                            reduceMotion = settings.reduceMotion,
                         )
                     }
                     // Dock + grid scale up and drop off the bottom — same choreography for frame mode and
@@ -564,7 +559,6 @@ fun LauncherScreen(
                                 backdrop = backdrop,
                                 topFocusRequester = tuneFocus,
                                 onFavoriteHover = { favoriteHover = it },
-                                reduceMotion = settings.reduceMotion,
                                 onHideApp = { viewModel.setAppHidden(it, true) },
                                 onAppInfo = { viewModel.openAppInfo(it) },
                                 onUninstall = { viewModel.uninstallApp(it) },
@@ -631,7 +625,6 @@ private fun TopBar(
     glassLive: Boolean,
     glassRefract: Boolean,
     glassBlur: Boolean,
-    reduceMotion: Boolean,
 ) {
     val context = LocalContext.current
     val net = rememberNetStatus()
@@ -684,8 +677,8 @@ private fun TopBar(
         AnimatedVisibility(
             visible = nowPlaying != null,
             modifier = Modifier.align(Alignment.Center),
-            enter = if (reduceMotion) fadeIn(snap()) else fadeIn(tween(300)) + scaleIn(initialScale = 0.92f, animationSpec = tween(300)),
-            exit = if (reduceMotion) fadeOut(snap()) else fadeOut(tween(200)) + scaleOut(targetScale = 0.92f, animationSpec = tween(200)),
+            enter = fadeIn(tween(300)) + scaleIn(initialScale = 0.92f, animationSpec = tween(300)),
+            exit = fadeOut(tween(200)) + scaleOut(targetScale = 0.92f, animationSpec = tween(200)),
         ) {
             lastNowPlaying?.let { np ->
                 NowPlayingChip(

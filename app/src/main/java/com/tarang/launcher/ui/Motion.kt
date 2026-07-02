@@ -26,6 +26,12 @@ private val StandardEase = CubicBezierEasing(0.4f, 0.0f, 0.2f, 1f)
 private val DecelEase = CubicBezierEasing(0.0f, 0.0f, 0.2f, 1f)
 private val AccelEase = CubicBezierEasing(0.4f, 0.0f, 1f, 1f)
 
+// A gentle ease-out-back (softened from the classic 1.56 overshoot): the value rides just past its
+// target and settles back. DEPTH uses it on the *settling* direction so chrome lands home with a
+// subtle bounce. The overshoot only reads on the return/exit move — on the way out the chrome has
+// already faded to alpha 0 before the tail, so it stays invisible there.
+private val OvershootEase = CubicBezierEasing(0.34f, 1.45f, 0.64f, 1f)
+
 // GLIDE's progress (0..1) is multiplied by the box height (~950px) to drive translation, so a spring's
 // default 0.01 visibility threshold would let it "settle" a visible ~9px from the target and then snap
 // there on the last frame. A sub-pixel threshold makes the tail land smoothly on the resting position.
@@ -56,28 +62,29 @@ fun frameMasterSpec(style: AnimStyle): AnimationSpec<Float> = when (style) {
 fun frameDockSpec(style: AnimStyle): AnimationSpec<Float> = when (style) {
     AnimStyle.BASELINE -> tween(1200, easing = StandardEase)
     AnimStyle.GLIDE -> glideSpring(dampingRatio = 1f, stiffness = 190f)
-    AnimStyle.DEPTH -> tween(900, easing = StandardEase)
+    AnimStyle.DEPTH -> tween(900, easing = OvershootEase)
 }
 
 /** Top bar layer during a Frame Art enter/exit (trails the dock — longest/softest). */
 fun frameTopBarSpec(style: AnimStyle): AnimationSpec<Float> = when (style) {
     AnimStyle.BASELINE -> tween(1500, easing = StandardEase)
     AnimStyle.GLIDE -> glideSpring(dampingRatio = 1f, stiffness = 110f)
-    AnimStyle.DEPTH -> tween(1100, easing = StandardEase)
+    AnimStyle.DEPTH -> tween(1100, easing = OvershootEase)
 }
 
 /** Dock layer during an app launch ([entering]) / return (!entering). */
 fun launchDockSpec(style: AnimStyle, entering: Boolean): AnimationSpec<Float> = when (style) {
     AnimStyle.BASELINE -> tween(600, easing = if (entering) AccelEase else DecelEase)
     AnimStyle.GLIDE -> glideSpring(dampingRatio = if (entering) 1f else 0.82f, stiffness = 340f)
-    AnimStyle.DEPTH -> tween(if (entering) 500 else 640, easing = if (entering) AccelEase else DecelEase)
+    // Return dives back with a subtle overshoot; the launch itself still accelerates away.
+    AnimStyle.DEPTH -> tween(if (entering) 500 else 640, easing = if (entering) AccelEase else OvershootEase)
 }
 
 /** Top bar layer during an app launch / return. */
 fun launchTopBarSpec(style: AnimStyle, entering: Boolean): AnimationSpec<Float> = when (style) {
     AnimStyle.BASELINE -> tween(900, easing = if (entering) AccelEase else DecelEase)
     AnimStyle.GLIDE -> glideSpring(dampingRatio = if (entering) 1f else 0.9f, stiffness = 240f)
-    AnimStyle.DEPTH -> tween(if (entering) 620 else 760, easing = if (entering) AccelEase else DecelEase)
+    AnimStyle.DEPTH -> tween(if (entering) 620 else 760, easing = if (entering) AccelEase else OvershootEase)
 }
 
 // ---------------------------------------------------------------------------------------------------

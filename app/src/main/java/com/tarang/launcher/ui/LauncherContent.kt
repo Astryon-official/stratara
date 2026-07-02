@@ -102,7 +102,6 @@ fun LauncherContent(
     modifier: Modifier = Modifier,
     topFocusRequester: FocusRequester? = null,
     onFavoriteHover: (String?) -> Unit = {},
-    reduceMotion: Boolean = false,
     onHideApp: (String) -> Unit = {},
     onAppInfo: (String) -> Unit = {},
     onUninstall: (String) -> Unit = {},
@@ -198,7 +197,6 @@ fun LauncherContent(
                             onAppLongPressed = openMenu, // long-press a dock tile -> context menu
                             tileWidth = dockTileW,
                             tileHeight = dockTileH,
-                            reduceMotion = reduceMotion,
                             firstCardFocusRequester = firstCard,
                             // UP from the dock goes to the top bar (settings button).
                             upFocusRequester = topFocusRequester,
@@ -220,7 +218,6 @@ fun LauncherContent(
                     tileWidth = gridTileW,
                     tileHeight = gridTileH,
                     modifier = Modifier.padding(horizontal = SidePad), // own side inset (no list padding)
-                    reduceMotion = reduceMotion,
                     firstCardFocusRequester = if (!hasDock && index == 0) firstCard else null,
                     // Only the very top row sends UP to the settings button.
                     upFocusRequester = if (!hasDock && index == 0) topFocusRequester else null,
