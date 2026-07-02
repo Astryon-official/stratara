@@ -261,7 +261,10 @@ fun SettingsScreen(
                         onUnhide = onUnhideApp,
                     )
 
-                    SettingsSection.DIAGNOSTICS -> DiagnosticsPane(onScanTvContent = onScanTvContent)
+                    SettingsSection.DIAGNOSTICS -> DiagnosticsPane(
+                        onScanTvContent = onScanTvContent,
+                        onOpenAndroidSettings = onOpenAndroidSettings,
+                    )
                 }
             }
         }
@@ -1204,10 +1207,13 @@ private fun HiddenAppRow(label: String, onUnhide: () -> Unit) {
 }
 
 @Composable
-private fun DiagnosticsPane(onScanTvContent: () -> Unit) {
+private fun DiagnosticsPane(onScanTvContent: () -> Unit, onOpenAndroidSettings: () -> Unit) {
     val colors = LocalLauncherColors.current
     Column(verticalArrangement = Arrangement.spacedBy(22.dp)) {
         PaneTitle("Diagnostics")
+
+        SectionLabel("System")
+        ToggleChip("Open system settings", active = false) { onOpenAndroidSettings() }
 
         SectionLabel("TV content")
         Text(
