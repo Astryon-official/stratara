@@ -269,7 +269,6 @@ fun SettingsScreen(
                     SettingsSection.HOME_SETUP -> HomeSetupPane(
                         onOpenAccessibility = onOpenAccessibilitySettings,
                         onChooseHome = onChooseHomeApp,
-                        onOpenAndroidSettings = onOpenAndroidSettings,
                     )
 
                     SettingsSection.HIDDEN_APPS -> HiddenAppsPane(
@@ -356,25 +355,9 @@ private fun AppearancePane(
     ) {
         PaneTitle("Appearance")
 
-        // Experiment switch: flip between the transition "personalities" and try them live
-        // (enter/exit Frame Art, launch/return an app). Placed first so it's quick to reach.
-        SectionLabel("Animation style")
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            ToggleChip("Default", settings.animStyle == AnimStyle.BASELINE) { onAnimStyle(AnimStyle.BASELINE) }
-            ToggleChip("Glide", settings.animStyle == AnimStyle.GLIDE) { onAnimStyle(AnimStyle.GLIDE) }
-            ToggleChip("Depth", settings.animStyle == AnimStyle.DEPTH) { onAnimStyle(AnimStyle.DEPTH) }
-        }
-        Text(
-            when (settings.animStyle) {
-                AnimStyle.BASELINE -> "The default motion: the chrome scales up and flies apart (fixed tweens)."
-                AnimStyle.GLIDE -> "Fluid springs: the chrome glides off and settles. No blur — smoothest on a slow TV."
-                AnimStyle.DEPTH -> "Depth: the home screen recedes into a painting, and dives forward into an app."
-            },
-            color = LocalLauncherColors.current.textDim,
-            fontSize = 13.sp,
-            modifier = Modifier.fillMaxWidth(0.85f),
-        )
-
+        // Order: the fundamentals people reach for first (theme, grid density, wallpaper), then the
+        // wallpaper family grouped together, then chrome/extras, with the experimental motion switch
+        // last — it's an aesthetic nicety, not something you tune often.
         SectionLabel("Theme")
         Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
             ToggleChip("Dark", theme == ThemeMode.DARK) { onTheme(ThemeMode.DARK) }
@@ -383,6 +366,13 @@ private fun AppearancePane(
         }
         if (theme == ThemeMode.AUTO) {
             Text("Light from 7am to 7pm, dark otherwise.", color = LocalLauncherColors.current.textDim, fontSize = 13.sp)
+        }
+
+        SectionLabel("Tiles per row")
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            for (n in MIN_COLUMNS..MAX_COLUMNS) {
+                ToggleChip("$n", n == settings.columns) { onColumns(n) }
+            }
         }
 
         SectionLabel("Wallpaper")
@@ -407,6 +397,8 @@ private fun AppearancePane(
             )
         }
 
+        // Grouped right after Wallpaper: the two "living wallpaper" modes that replace the flat
+        // gradient/photo behind the home screen.
         SectionLabel("Frame Art as wallpaper")
         Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
             ToggleChip("On", settings.useFrameArtWallpaper) { onUseFrameArtWallpaper(true) }
@@ -427,13 +419,6 @@ private fun AppearancePane(
             onToggleArtworkApp = onToggleArtworkApp,
         )
 
-        SectionLabel("Tiles per row")
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            for (n in MIN_COLUMNS..MAX_COLUMNS) {
-                ToggleChip("$n", n == settings.columns) { onColumns(n) }
-            }
-        }
-
         SectionLabel("Glass blur")
         Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
             ToggleChip("On", settings.glassBlur) { onGlassBlur(true) }
@@ -451,6 +436,25 @@ private fun AppearancePane(
             enabled = nowPlaying,
             onEnabled = onNowPlaying,
             onOpenNotificationAccess = onOpenNotificationAccess,
+        )
+
+        // Last: the transition "personality" — an aesthetic extra. Flip between them and try each
+        // live (enter/exit Frame Art, launch/return an app).
+        SectionLabel("Animation style")
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            ToggleChip("Default", settings.animStyle == AnimStyle.BASELINE) { onAnimStyle(AnimStyle.BASELINE) }
+            ToggleChip("Glide", settings.animStyle == AnimStyle.GLIDE) { onAnimStyle(AnimStyle.GLIDE) }
+            ToggleChip("Depth", settings.animStyle == AnimStyle.DEPTH) { onAnimStyle(AnimStyle.DEPTH) }
+        }
+        Text(
+            when (settings.animStyle) {
+                AnimStyle.BASELINE -> "The default motion: the chrome scales up and flies apart (fixed tweens)."
+                AnimStyle.GLIDE -> "Fluid springs: the chrome glides off and settles. No blur — smoothest on a slow TV."
+                AnimStyle.DEPTH -> "Depth: the home screen recedes into a painting, and dives forward into an app."
+            },
+            color = LocalLauncherColors.current.textDim,
+            fontSize = 13.sp,
+            modifier = Modifier.fillMaxWidth(0.85f),
         )
 
         // Breathing room so the last section can scroll clear of the screen edge.
@@ -1047,7 +1051,6 @@ private fun artworkDetail(art: AppArtwork?): String {
 private fun HomeSetupPane(
     onOpenAccessibility: () -> Unit,
     onChooseHome: (() -> Unit)?,
-    onOpenAndroidSettings: () -> Unit,
 ) {
     val colors = LocalLauncherColors.current
     val status = rememberHomeSetupStatus()
@@ -1090,10 +1093,6 @@ private fun HomeSetupPane(
                 modifier = Modifier.fillMaxWidth(0.8f),
             )
         }
-
-        // The system settings entry lives here (not in the top bar) to keep the resting bar minimal.
-        SectionLabel("System")
-        ToggleChip("Open Android settings", active = false) { onOpenAndroidSettings() }
 
         Spacer(Modifier.height(44.dp))
     }
