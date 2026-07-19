@@ -343,6 +343,12 @@ fun LauncherScreen(
                 }
             },
     ) {
+        // A launcher owns Back on its home screen: at rest, Back must do nothing (you're already
+        // home). Without this, Back finishes HomeActivity, the stock launcher flashes up, and the
+        // redirect service bounces right back to Tarang — a jarring blink. This is the lowest-priority
+        // catch-all; inner surfaces (Settings, Frame Art below, the Dialog-based pickers/menus) register
+        // their own Back handling, which — being composed later — takes precedence, so their Back works.
+        BackHandler(enabled = true) { /* consume: stay home */ }
         // Frame Art owns Back too: consume it to wake the launcher instead of letting the system act
         // on it (which flashes the stock launcher / can finish this activity).
         BackHandler(enabled = frameOn || framePartly) {

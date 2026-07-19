@@ -63,15 +63,19 @@ private val MinTopGap = 84.dp // floor for the computed top gap on very short vi
  * focus), and otherwise scroll the least amount to reveal it (so the grid scrolls up cleanly). The
  * default TV behaviour over-scrolls, pulling the dock up and eating the top gap.
  */
+// A focused tile scales up ~6–7% via graphicsLayer, and Compose's bring-into-view reads the focused
+// node's *transformed* (scaled) bounds. So the first Left/Right move into a row scrolls a few px to
+// re-fit the scaled tile against the edge — a visible one-time nudge. [slop] is sized to that halo
+// (see the call site) so an already-visible row is left alone and never re-fits.
 @OptIn(ExperimentalFoundationApi::class)
-private val MinimalBringIntoView = object : BringIntoViewSpec {
+private fun minimalBringIntoView(slop: Float): BringIntoViewSpec = object : BringIntoViewSpec {
     private val inset = 24f // keep a focused row a hair off the screen edges (covers the focus scale)
 
     override fun calculateScrollDistance(offset: Float, size: Float, containerSize: Float): Float {
         val leading = offset - inset
         val trailing = offset + size + inset
         return when {
-            leading >= 0f && trailing <= containerSize -> 0f // already visible (with margin): don't move
+            leading >= -slop && trailing <= containerSize + slop -> 0f // already visible (within slop): don't move
             size + inset * 2 > containerSize -> 0f // taller than the viewport: leave it
             abs(leading) < abs(trailing - containerSize) -> leading
             else -> trailing - containerSize
@@ -159,7 +163,15 @@ fun LauncherContent(
         val dockBlockH = dockTileH + DockPad * 2
         val topGap = (maxHeight - dockBlockH - DockBottomGap).coerceAtLeast(MinTopGap)
 
-        CompositionLocalProvider(LocalBringIntoViewSpec provides MinimalBringIntoView) {
+        // Size the bring-into-view slop to the focus scale-halo: a focused/moving tile grows up to ~7%,
+        // so it spills ~0.07·tileH past its layout box on each edge. Absorbing that stops the one-time
+        // re-fit nudge when moving Left/Right into a row. The resting position is still set by the
+        // vertical scroll that bottom-aligns the row, so the scaled tile keeps its margin (no clipping).
+        val density = LocalDensity.current
+        val bringIntoView = remember(gridTileH, density) {
+            minimalBringIntoView(with(density) { gridTileH.toPx() } * 0.07f + 3f)
+        }
+        CompositionLocalProvider(LocalBringIntoViewSpec provides bringIntoView) {
         LazyColumn(
             state = listState,
             modifier = Modifier.fillMaxSize(),
