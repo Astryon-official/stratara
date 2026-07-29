@@ -240,11 +240,16 @@ class DockRipple(val origin: Int, count: Int, private val progress: () -> Float)
     fun tileGrowth(index: Int): Float = growthOfRing(abs(index - origin))
 
     /**
-     * Signed horizontal spread for tile [index], in tile widths: each inner ring contributes its
-     * progress weighted by the mean growth of the pair it separates, which pushes the tile outward
-     * by at least the room its inner neighbours' growth consumes — the dock bursts open around the
-     * launched app and the rising tiles never merge. Because inner rings always lead outer ones,
-     * the push can only widen the gaps (and the return re-packs in the same order).
+     * Signed horizontal travel for tile [index], in tile widths. Two parts:
+     *
+     * 1. Anti-merge spread — each inner ring contributes its progress weighted by the mean growth of
+     *    the pair it separates, pushing the tile outward by at least the room its inner neighbours'
+     *    growth consumes, so the rising tiles never merge. Inner rings always lead outer ones, so
+     *    the push can only widen the gaps (and the return re-packs in the same order).
+     * 2. Fly-out — an accelerating exit proportional to the distance from the hero: a zoom about the
+     *    launched tile, so the wave carries every other tile off the sides of the screen while the
+     *    hero stays put as the vanishing point. (p·|p| keeps the sign so the return flies back in
+     *    and the landing dip still nudges inward.)
      */
     fun tileSpread(index: Int): Float {
         val d = abs(index - origin)
@@ -253,6 +258,8 @@ class DockRipple(val origin: Int, count: Int, private val progress: () -> Float)
             val pairGrowth = (growthOfRing(k) + growthOfRing(k + 1)) / 2f
             sum += pairGrowth * staged(k).coerceAtLeast(0f)
         }
+        val p = staged(d)
+        sum += d * RIPPLE_FLY * p * abs(p)
         return if (index >= origin) sum else -sum
     }
 
@@ -276,6 +283,10 @@ private const val RIPPLE_DECAY = 0.65f
 /** How much the launched tile itself grows — the hero of the move. */
 private const val RIPPLE_GROWTH_ORIGIN = 0.50f
 
+/** Fly-out distance per ring of separation from the hero, in tile widths at full progress. The
+ *  outer tiles clear the screen edge entirely; ring 1 is visibly on its way out when it fades. */
+private const val RIPPLE_FLY = 1.0f
+
 /** Per-tile transform for the dock ripple: the tile lifts up out of the dock plane while it grows —
  *  staying fully opaque through the rise so the depth reads — then dissolves on the way out. MULTIPLIES
  *  into the layer's current scale/alpha and must run inside the tile's OWN graphicsLayer (the one that
@@ -283,8 +294,9 @@ private const val RIPPLE_GROWTH_ORIGIN = 0.50f
  *  separate wrapper layer would crop the focus-scale overflow into a square. */
 fun GraphicsLayerScope.applyDockRippleTile(p: Float, spread: Float, growth: Float) {
     val visP = p.coerceAtLeast(0f)
-    // Opaque through the first 35% of the rise, fully dissolved at 80% — growth first, then the fade.
-    alpha *= 1f - ((visP - 0.35f) / 0.45f).coerceIn(0f, 1f)
+    // Opaque through the first 45% and only fully gone at 90%: the fly-out (and the screen edge)
+    // removes the tiles — the fade just cleans up whatever hasn't left the frame by then.
+    alpha *= 1f - ((visP - 0.45f) / 0.45f).coerceIn(0f, 1f)
     val s = 1f + growth * p
     scaleX *= s
     scaleY *= s
