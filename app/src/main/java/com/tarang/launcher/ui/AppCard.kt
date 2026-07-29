@@ -61,6 +61,9 @@ fun AppCard(
     upFocusRequester: FocusRequester? = null,
     isMoving: Boolean = false,
     dimmed: Boolean = false,
+    // Extra launch transform (the DEPTH dock ripple), applied INSIDE the tile's own graphicsLayer so
+    // it composes with the focus scale — a wrapper layer would clip the overflow (see Motion.kt).
+    launchLayer: (androidx.compose.ui.graphics.GraphicsLayerScope.() -> Unit)? = null,
 ) {
     val tile: TileArt? by produceState<TileArt?>(initialValue = null, app.packageName) {
         value = iconLoader.loadTile(app)
@@ -94,7 +97,11 @@ fun AppCard(
         onLongClick = onLongClick,
         modifier = modifier
             .size(width = tileWidth, height = tileHeight)
-            .graphicsLayer { scaleX = scale; scaleY = scale }
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+                launchLayer?.invoke(this)
+            }
             .alpha(if (dimmed) 0.4f else 1f)
             .shadow(elevation = elevation, shape = tileShape, clip = false)
             .then(

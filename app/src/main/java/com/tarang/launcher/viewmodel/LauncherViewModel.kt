@@ -178,6 +178,7 @@ class LauncherViewModel(
     fun clearWeatherCity() = viewModelScope.launch { settingsStore.clearWeatherCity() }.let {}
     fun setFrameNightDim(value: Boolean) = viewModelScope.launch { settingsStore.setFrameNightDim(value) }.let {}
     fun setNowPlaying(value: Boolean) = viewModelScope.launch { settingsStore.setNowPlaying(value) }.let {}
+    fun setNavSounds(value: Boolean) = viewModelScope.launch { settingsStore.setNavSounds(value) }.let {}
 
     companion object {
         private const val DEFAULT_DOCK_COUNT = 5

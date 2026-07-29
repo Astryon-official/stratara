@@ -33,6 +33,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -76,6 +77,7 @@ import androidx.tv.material3.ExperimentalTvMaterial3Api
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import com.tarang.launcher.R
+import com.tarang.launcher.data.AnimStyle
 import com.tarang.launcher.data.FrameSource
 import com.tarang.launcher.data.LauncherSettings
 import com.tarang.launcher.data.WeatherUnit
@@ -84,6 +86,7 @@ import com.tarang.launcher.home.HomeRedirectService
 import com.tarang.launcher.home.HomeSetup
 import com.tarang.launcher.viewmodel.LauncherViewModel
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -117,6 +120,10 @@ fun LauncherScreen(
     val settings = settingsOrNull ?: return
     var showSettings by remember { mutableStateOf(false) }
     val tuneFocus = remember { FocusRequester() }
+
+    // tvOS-style navigation sounds; the setting gates them inside UiSounds.
+    val sounds = container.uiSounds
+    SideEffect { sounds.enabled = settings.navSounds }
 
     // Image wallpaper: a built-in browser (no external gallery app needed) returns a Uri, which we
     // copy into app storage and set as the wallpaper.
@@ -287,13 +294,34 @@ fun LauncherScreen(
     // is the longer of the two, so it's the last to settle.
     val transitioning by remember { derivedStateOf { topBarLaunch.value > 0.001f } }
 
+    // DEPTH-only dock ripple: remember which dock tile launched the app so the transition leads from
+    // it (and the return lands on it last). -1 = launched from the grid → uniform transform as before.
+    var launchDockIndex by remember { mutableIntStateOf(-1) }
+    val dockRipple = remember(style, launchDockIndex, uiState.dockApps.size) {
+        if (style == AnimStyle.DEPTH && launchDockIndex >= 0 && launchDockIndex < uiState.dockApps.size) {
+            DockRipple(launchDockIndex, uiState.dockApps.size) { dockLaunch.value }
+        } else {
+            null
+        }
+    }
+
     fun launchApp(packageName: String) {
         // No window scale-up — the app opens with the system default while the launcher chrome does the
         // dock-drop / bar-rise dissolve (the same motion as entering Frame Art).
-        val launched = viewModel.launchApp(packageName, null)
-        if (launched) {
+        sounds.click()
+        launchDockIndex = uiState.dockApps.indexOfFirst { it.packageName == packageName }
+        scope.launch {
             awaitingReturn = true
             launchTick++
+            // Optional motion-debug hold (see Motion.kt): lets the chrome animation play out before
+            // the app window covers it. 0 in normal use — the app starts immediately.
+            if (style == AnimStyle.DEPTH && DEPTH_LAUNCH_HOLD_MS > 0) delay(DEPTH_LAUNCH_HOLD_MS)
+            val launched = viewModel.launchApp(packageName, null)
+            if (!launched) {
+                // The app never started (no launch intent) — bring the chrome back home.
+                awaitingReturn = false
+                returnTick++
+            }
         }
     }
 
@@ -318,10 +346,14 @@ fun LauncherScreen(
     }
     LaunchedEffect(returnTick) {
         if (returnTick > 0) {
-            // Returning from the app: start from the launched state and reverse home.
+            // Returning from the app: start from the launched state and reverse home. Once the dock
+            // has settled, forget the ripple origin so the tiles shed their extra draw layers.
             dockLaunch.snapTo(1f)
             topBarLaunch.snapTo(1f)
-            launch { dockLaunch.animateTo(0f, launchDockSpec(style, entering = false)) }
+            launch {
+                dockLaunch.animateTo(0f, launchDockSpec(style, entering = false))
+                launchDockIndex = -1
+            }
             launch { topBarLaunch.animateTo(0f, launchTopBarSpec(style, entering = false)) }
         }
     }
@@ -337,9 +369,10 @@ fun LauncherScreen(
                     frameOn -> {
                         if (e.type == KeyEventType.KeyDown) {
                             when {
-                                frameNav.canPage && e.key == Key.DirectionRight -> frameNav.next()
-                                frameNav.canPage && e.key == Key.DirectionLeft -> frameNav.previous()
+                                frameNav.canPage && e.key == Key.DirectionRight -> { sounds.navigate(); frameNav.next() }
+                                frameNav.canPage && e.key == Key.DirectionLeft -> { sounds.navigate(); frameNav.previous() }
                                 else -> {
+                                    sounds.back()
                                     frameOn = false
                                     wakingUp = true
                                     interaction++
@@ -354,7 +387,15 @@ fun LauncherScreen(
                         true
                     }
                     else -> {
-                        if (e.type == KeyEventType.KeyDown) interaction++ // any key resets the idle timer
+                        if (e.type == KeyEventType.KeyDown) {
+                            interaction++ // any key resets the idle timer
+                            // The tvOS navigation tick, on every D-pad move (per the sound pack's own
+                            // action mapping — selects and backs have their own sounds at their sites).
+                            when (e.key) {
+                                Key.DirectionUp, Key.DirectionDown, Key.DirectionLeft, Key.DirectionRight ->
+                                    sounds.navigate()
+                            }
+                        }
                         false
                     }
                 }
@@ -369,6 +410,7 @@ fun LauncherScreen(
         // Frame Art owns Back too: consume it to wake the launcher instead of letting the system act
         // on it (which flashes the stock launcher / can finish this activity).
         BackHandler(enabled = frameOn || framePartly) {
+            sounds.back()
             frameOn = false
             interaction++
         }
@@ -508,12 +550,13 @@ fun LauncherScreen(
                     onWeatherAuto = viewModel::clearWeatherCity,
                     onFrameNightDim = viewModel::setFrameNightDim,
                     onNowPlaying = viewModel::setNowPlaying,
+                    onNavSounds = viewModel::setNavSounds,
                     onOpenScreensaverSettings = { openScreensaverSettings(context) },
                     onOpenNotificationAccess = { openNotificationAccess(context) },
                     onOpenAccessibilitySettings = { HomeSetup.openAccessibilitySettings(context) },
                     onOpenAndroidSettings = { openAndroidSettings(context) },
                     onChooseHomeApp = chooseHomeApp,
-                    onClose = { showSettings = false },
+                    onClose = { sounds.back(); showSettings = false },
                 )
             } else {
                 Column(modifier = Modifier.fillMaxSize()) {
@@ -530,8 +573,8 @@ fun LauncherScreen(
                         },
                     ) {
                         TopBar(
-                            onOpenSettings = { showSettings = true },
-                            onEnterFrame = { frameOn = true },
+                            onOpenSettings = { sounds.click(); showSettings = true },
+                            onEnterFrame = { sounds.click(); frameOn = true },
                             // Best-effort real sleep via the accessibility service; if it isn't
                             // connected, fall back to entering Frame Art as an ambient "screensaver".
                             onSleep = { if (!HomeRedirectService.requestSleep()) frameOn = true },
@@ -563,7 +606,9 @@ fun LauncherScreen(
                                     style,
                                     ChromeLayer.DOCK,
                                     frameP = dockProgress.value,
-                                    launchP = dockLaunch.value,
+                                    // With a dock ripple, the chrome takes the trailing slot — the
+                                    // launched tile and its neighbours lead (see DockRipple).
+                                    launchP = dockRipple?.chromeProgress() ?: dockLaunch.value,
                                 )
                             },
                     ) {
@@ -574,6 +619,7 @@ fun LauncherScreen(
                                 dockApps = uiState.dockApps,
                                 gridApps = visibleGrid,
                                 iconLoader = container.iconLoader,
+                                dockRipple = dockRipple,
                                 onAppFocused = viewModel::onAppFocused,
                                 onAppClicked = { pkg -> launchApp(pkg) },
                                 onToggleFavorite = viewModel::toggleFavorite,

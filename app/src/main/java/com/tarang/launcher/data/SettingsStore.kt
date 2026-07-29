@@ -123,6 +123,8 @@ data class LauncherSettings(
     val frameNightDim: Boolean = false,
     /** Show a compact "now playing" chip in the top bar (needs notification-access to read sessions). */
     val nowPlaying: Boolean = false,
+    /** Play the tvOS-style navigation sounds (D-pad tick, select click, back whoosh). */
+    val navSounds: Boolean = true,
 )
 
 /** Persists [LauncherSettings] via DataStore. */
@@ -170,6 +172,7 @@ class SettingsStore(context: Context) {
             weatherLon = p[WEATHER_LON],
             frameNightDim = p[FRAME_NIGHT_DIM] ?: false,
             nowPlaying = p[NOW_PLAYING] ?: false,
+            navSounds = p[NAV_SOUNDS] ?: true,
         )
     }
 
@@ -252,6 +255,7 @@ class SettingsStore(context: Context) {
 
     suspend fun setFrameNightDim(value: Boolean) = dataStore.edit { it[FRAME_NIGHT_DIM] = value }
     suspend fun setNowPlaying(value: Boolean) = dataStore.edit { it[NOW_PLAYING] = value }
+    suspend fun setNavSounds(value: Boolean) = dataStore.edit { it[NAV_SOUNDS] = value }
 
     private companion object {
         val WALLPAPER_ID = intPreferencesKey("wallpaper_id")
@@ -285,5 +289,6 @@ class SettingsStore(context: Context) {
         val WEATHER_LON = doublePreferencesKey("weather_lon")
         val FRAME_NIGHT_DIM = booleanPreferencesKey("frame_night_dim")
         val NOW_PLAYING = booleanPreferencesKey("now_playing")
+        val NAV_SOUNDS = booleanPreferencesKey("nav_sounds")
     }
 }

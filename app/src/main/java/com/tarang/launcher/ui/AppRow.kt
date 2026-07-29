@@ -16,8 +16,10 @@ import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
 import com.tarang.launcher.data.AppInfo
 import com.tarang.launcher.data.IconLoader
+import kotlin.math.abs
 
 /**
  * A single horizontal row of [AppCard]s. Rows are stacked in a LazyColumn (see [LauncherContent]).
@@ -39,6 +41,9 @@ fun AppRow(
     tileWidth: Dp,
     tileHeight: Dp,
     modifier: Modifier = Modifier,
+    // DEPTH dock-launch ripple: staggers each tile's scale/fade by its distance from the launched
+    // tile. Null for grid rows, other styles, and grid launches.
+    ripple: DockRipple? = null,
     firstCardFocusRequester: FocusRequester? = null,
     upFocusRequester: FocusRequester? = null,
     movingPackage: String? = null,
@@ -82,7 +87,14 @@ fun AppRow(
                 upFocusRequester = upFocusRequester,
                 isMoving = isMoving,
                 dimmed = movingPackage != null && !isMoving,
-                modifier = if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier,
+                launchLayer = ripple?.let { r ->
+                    { applyDockRippleTile(r.tileProgress(index), r.tileSpread(index), r.tileGrowth(index)) }
+                },
+                modifier = Modifier
+                    // While rippling, the launched tile draws on top and each ring above the next, so
+                    // the growing tile rises OVER its neighbours instead of sliding under them.
+                    .then(if (ripple != null) Modifier.zIndex(-abs(index - ripple.origin).toFloat()) else Modifier)
+                    .then(if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier),
             )
         }
     }

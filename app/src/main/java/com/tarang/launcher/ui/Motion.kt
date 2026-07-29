@@ -7,6 +7,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.ui.graphics.GraphicsLayerScope
 import androidx.compose.ui.graphics.TransformOrigin
 import com.tarang.launcher.data.AnimStyle
+import kotlin.math.abs
 
 /**
  * The motion vocabulary for the four big transitions (enter/exit Frame Art, launch/return an app),
@@ -72,19 +73,35 @@ fun frameTopBarSpec(style: AnimStyle): AnimationSpec<Float> = when (style) {
     AnimStyle.DEPTH -> tween(1100, easing = OvershootEase)
 }
 
+// Debug multiplier on DEPTH's launch/return timings: 1f in normal use; raise it (e.g. to 4f) to
+// slow-motion the dock ripple for on-device inspection. The real durations live in the specs below.
+const val DEPTH_LAUNCH_SLOWDOWN = 1f
+
+/** How long [LauncherScreen] waits after starting the DEPTH launch animation before actually starting
+ *  the app. 0 = launch immediately (the app's own start-up keeps the ripple visible anyway); raise it
+ *  toward the top-bar duration to watch the full move during motion debugging. */
+const val DEPTH_LAUNCH_HOLD_MS = 0L
+
 /** Dock layer during an app launch ([entering]) / return (!entering). */
 fun launchDockSpec(style: AnimStyle, entering: Boolean): AnimationSpec<Float> = when (style) {
     AnimStyle.BASELINE -> tween(600, easing = if (entering) AccelEase else DecelEase)
     AnimStyle.GLIDE -> glideSpring(dampingRatio = if (entering) 1f else 0.82f, stiffness = 340f)
-    // Return dives back with a subtle overshoot; the launch itself still accelerates away.
-    AnimStyle.DEPTH -> tween(if (entering) 500 else 640, easing = if (entering) AccelEase else OvershootEase)
+    // Return dives back with a subtle overshoot; the launch itself still accelerates away. Tuned
+    // on-device for the dock ripple (stagger + lift + burst needs more room than a flat dissolve).
+    AnimStyle.DEPTH -> tween(
+        ((if (entering) 850 else 1000) * DEPTH_LAUNCH_SLOWDOWN).toInt(),
+        easing = if (entering) AccelEase else OvershootEase,
+    )
 }
 
 /** Top bar layer during an app launch / return. */
 fun launchTopBarSpec(style: AnimStyle, entering: Boolean): AnimationSpec<Float> = when (style) {
     AnimStyle.BASELINE -> tween(900, easing = if (entering) AccelEase else DecelEase)
     AnimStyle.GLIDE -> glideSpring(dampingRatio = if (entering) 1f else 0.9f, stiffness = 240f)
-    AnimStyle.DEPTH -> tween(if (entering) 620 else 760, easing = if (entering) AccelEase else OvershootEase)
+    AnimStyle.DEPTH -> tween(
+        ((if (entering) 930 else 1140) * DEPTH_LAUNCH_SLOWDOWN).toInt(),
+        easing = if (entering) AccelEase else OvershootEase,
+    )
 }
 
 // ---------------------------------------------------------------------------------------------------
@@ -179,4 +196,91 @@ private fun GraphicsLayerScope.depth(layer: ChromeLayer, frameP: Float, launchP:
 fun artEntryScale(style: AnimStyle, p: Float): Float = when (style) {
     AnimStyle.DEPTH -> 1.06f - 0.06f * p
     else -> 1f
+}
+
+// ---------------------------------------------------------------------------------------------------
+// DEPTH dock ripple — launching from the dock, the chosen tile leads: it rises toward the viewer
+// first, then its neighbours ring by ring (distance 1 on each side, then 2, …), and the dock chrome
+// (with the grid) trails last. On the return the same mapping runs backwards, so the chrome re-forms
+// first and the launched tile lands last. Grid launches keep the uniform transform.
+// ---------------------------------------------------------------------------------------------------
+
+/** Fraction of the launch timeline across which the ripple's start times are spread; every element
+ *  then ramps over the remaining (1 - spread), so the last one still finishes exactly on time. */
+private const val RIPPLE_SPREAD = 0.45f
+
+/** Floor for the master's return overshoot (OvershootEase dips the progress a hair below 0), kept so
+ *  the landing bounce survives the per-slot clamping. */
+private const val RIPPLE_DIP = -0.2f
+
+/**
+ * Maps the master dock-launch progress (read lazily via [progress], so it can be sampled per frame
+ * in a graphicsLayer block) onto staggered per-tile ramps. [origin] is the launched tile's index in
+ * a dock of [count] tiles.
+ */
+class DockRipple(val origin: Int, count: Int, private val progress: () -> Float) {
+
+    // Ring slots 0..maxRing for the tiles; one more slot after them for the dock chrome.
+    private val slots = maxOf(origin, count - 1 - origin) + 1
+
+    private fun staged(slot: Int): Float {
+        val p = progress()
+        // At/past home (including the return's overshoot dip) everything moves together.
+        if (p <= 0f) return p.coerceAtLeast(RIPPLE_DIP)
+        val start = RIPPLE_SPREAD * slot / slots
+        return ((p - start) / (1f - RIPPLE_SPREAD)).coerceIn(0f, 1f)
+    }
+
+    /** The staggered progress for dock tile [index]. */
+    fun tileProgress(index: Int): Float = staged(abs(index - origin))
+
+    /** How much tile [index] grows: the launched tile is the hero (1.5×); the rings grow less. */
+    fun tileGrowth(index: Int): Float = if (index == origin) RIPPLE_GROWTH_ORIGIN else RIPPLE_GROWTH
+
+    /**
+     * Signed horizontal spread for tile [index], in tile widths: each inner ring contributes its
+     * progress weighted by the mean growth of the pair it separates, which pushes the tile outward
+     * by at least the room its inner neighbours' growth consumes — the dock bursts open around the
+     * launched app and the rising tiles never merge. Because inner rings always lead outer ones,
+     * the push can only widen the gaps (and the return re-packs in the same order).
+     */
+    fun tileSpread(index: Int): Float {
+        val d = abs(index - origin)
+        var sum = 0f
+        for (k in 0 until d) {
+            val pairGrowth = (growthOfRing(k) + growthOfRing(k + 1)) / 2f
+            sum += pairGrowth * staged(k).coerceAtLeast(0f)
+        }
+        return if (index >= origin) sum else -sum
+    }
+
+    private fun growthOfRing(ring: Int): Float = if (ring == 0) RIPPLE_GROWTH_ORIGIN else RIPPLE_GROWTH
+
+    /** The trailing progress for the dock chrome layer (frosted bar + grid). */
+    fun chromeProgress(): Float = staged(slots)
+}
+
+/** How much a rippling ring tile grows (scale goes to 1 + this). */
+private const val RIPPLE_GROWTH = 0.30f
+
+/** How much the launched tile itself grows — the hero of the move. */
+private const val RIPPLE_GROWTH_ORIGIN = 0.50f
+
+/** Per-tile transform for the dock ripple: the tile lifts up out of the dock plane while it grows —
+ *  staying fully opaque through the rise so the depth reads — then dissolves on the way out. MULTIPLIES
+ *  into the layer's current scale/alpha and must run inside the tile's OWN graphicsLayer (the one that
+ *  applies the focus scale): alpha < 1 makes a layer composite offscreen clipped to its bounds, so a
+ *  separate wrapper layer would crop the focus-scale overflow into a square. */
+fun GraphicsLayerScope.applyDockRippleTile(p: Float, spread: Float, growth: Float) {
+    val visP = p.coerceAtLeast(0f)
+    // Opaque through the first 35% of the rise, fully dissolved at 80% — growth first, then the fade.
+    alpha *= 1f - ((visP - 0.35f) / 0.45f).coerceIn(0f, 1f)
+    val s = 1f + growth * p
+    scaleX *= s
+    scaleY *= s
+    // The lift off the dock: rise by a third of the tile height as it grows (and dip past home on the
+    // return's overshoot, which is the landing bounce). The spread pushes the tile clear of its
+    // growing inner neighbours (see DockRipple.tileSpread).
+    translationY += -0.33f * size.height * p
+    translationX += spread * size.width
 }

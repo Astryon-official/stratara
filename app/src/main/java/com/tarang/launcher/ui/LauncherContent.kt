@@ -104,6 +104,8 @@ fun LauncherContent(
     columns: Int,
     backdrop: GraphicsLayer,
     modifier: Modifier = Modifier,
+    // DEPTH launch ripple across the dock tiles (null for other styles / grid launches).
+    dockRipple: DockRipple? = null,
     topFocusRequester: FocusRequester? = null,
     onFavoriteHover: (String?) -> Unit = {},
     onHideApp: (String) -> Unit = {},
@@ -194,15 +196,23 @@ fun LauncherContent(
                             // top. When focus leaves the dock entirely, clear the artwork hover.
                             .onFocusChanged {
                                 if (it.hasFocus) scope.launch { listState.animateScrollToItem(0) } else onFavoriteHover(null)
-                            }
-                            // No per-app accent on the dock: it kept re-tinting on every hover (a
-                            // visible flicker + redraw). A stable chrome tint keeps the dock calm.
-                            .frostedGlass(backdrop, DockShape, tint = if (glassBlur) colors.chrome else colors.chromeOpaque, live = glassLive, refract = glassRefract, blur = glassBlur)
-                            .padding(DockPad),
+                            },
                     ) {
+                        // The frosted bar sits BEHIND the tiles as a sibling, not as their container:
+                        // frostedGlass clips to the bar shape, and the launch ripple lifts tiles above
+                        // the bar — as a parent it would crop them at the dock border.
+                        Box(
+                            modifier = Modifier
+                                .matchParentSize()
+                                // No per-app accent on the dock: it kept re-tinting on every hover (a
+                                // visible flicker + redraw). A stable chrome tint keeps the dock calm.
+                                .frostedGlass(backdrop, DockShape, tint = if (glassBlur) colors.chrome else colors.chromeOpaque, live = glassLive, refract = glassRefract, blur = glassBlur),
+                        )
+                        Box(modifier = Modifier.padding(DockPad)) {
                         AppRow(
                             apps = shownDock,
                             iconLoader = iconLoader,
+                            ripple = dockRipple,
                             // Dock = favorites: report which one is hovered so its artwork can play.
                             onAppFocused = { onAppFocused(it); onFavoriteHover(it) },
                             onAppClicked = onAppClicked,
@@ -217,6 +227,7 @@ fun LauncherContent(
                             onRemoveFromDock = ::removeMoving,
                             onCommitMove = ::commitMove,
                         )
+                        }
                     }
                 }
             }

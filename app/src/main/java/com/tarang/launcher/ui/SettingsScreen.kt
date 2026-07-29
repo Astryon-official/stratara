@@ -148,6 +148,7 @@ fun SettingsScreen(
     onWeatherAuto: () -> Unit,
     onFrameNightDim: (Boolean) -> Unit,
     onNowPlaying: (Boolean) -> Unit,
+    onNavSounds: (Boolean) -> Unit,
     onOpenScreensaverSettings: () -> Unit,
     onOpenNotificationAccess: () -> Unit,
     onOpenAccessibilitySettings: () -> Unit,
@@ -223,6 +224,7 @@ fun SettingsScreen(
                         onUseFrameArtWallpaper = onUseFrameArtWallpaper,
                         nowPlaying = settings.nowPlaying,
                         onNowPlaying = onNowPlaying,
+                        onNavSounds = onNavSounds,
                         onOpenNotificationAccess = onOpenNotificationAccess,
                     )
 
@@ -344,6 +346,7 @@ private fun AppearancePane(
     onUseFrameArtWallpaper: (Boolean) -> Unit,
     nowPlaying: Boolean,
     onNowPlaying: (Boolean) -> Unit,
+    onNavSounds: (Boolean) -> Unit,
     onOpenNotificationAccess: () -> Unit,
 ) {
     val thumb = rememberWallpaperThumb(settings.wallpaperImagePath)
@@ -452,6 +455,18 @@ private fun AppearancePane(
                 AnimStyle.GLIDE -> "Fluid springs: the chrome glides off and settles. No blur — smoothest on a slow TV."
                 AnimStyle.DEPTH -> "Depth: the home screen recedes into a painting, and dives forward into an app."
             },
+            color = LocalLauncherColors.current.textDim,
+            fontSize = 13.sp,
+            modifier = Modifier.fillMaxWidth(0.85f),
+        )
+
+        SectionLabel("Navigation sounds")
+        Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+            ToggleChip("On", settings.navSounds) { onNavSounds(true) }
+            ToggleChip("Off", !settings.navSounds) { onNavSounds(false) }
+        }
+        Text(
+            "A soft tick on D-pad moves, a click when you open something, and a whoosh on the way back.",
             color = LocalLauncherColors.current.textDim,
             fontSize = 13.sp,
             modifier = Modifier.fillMaxWidth(0.85f),

@@ -6,6 +6,7 @@ import com.tarang.launcher.data.AppRepository
 import com.tarang.launcher.data.FavoritesStore
 import com.tarang.launcher.data.IconLoader
 import com.tarang.launcher.data.SettingsStore
+import com.tarang.launcher.media.UiSounds
 
 /**
  * Minimal manual dependency graph (plan §4). Held by [com.tarang.launcher.TarangApp].
@@ -19,4 +20,5 @@ class AppContainer(context: Context) {
     val favoritesStore: FavoritesStore by lazy { FavoritesStore(appContext) }
     val settingsStore: SettingsStore by lazy { SettingsStore(appContext) }
     val appListCache: AppListCache by lazy { AppListCache(appContext) }
+    val uiSounds: UiSounds by lazy { UiSounds(appContext) }
 }
