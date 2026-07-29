@@ -95,6 +95,10 @@ import java.io.File
 // at 60fps; the blurred backdrop doesn't need that, and the capture is the heaviest per-frame cost).
 private const val BACKDROP_CAPTURE_INTERVAL_NS = 50_000_000L
 
+// If a started app hasn't covered the launcher after this long, give up on the launch splash and
+// come back home (it would otherwise sit key-locked on top of the launcher).
+private const val LAUNCH_COVER_TIMEOUT_MS = 8_000L
+
 /**
  * Top-level launcher UI: an animated wallpaper behind a clean app grid, with a top bar holding the
  * clock and settings (tune) button. No content rows. Tapping a tile launches the app directly.
@@ -320,6 +324,14 @@ fun LauncherScreen(
             val launched = viewModel.launchApp(packageName, null)
             if (!launched) {
                 // The app never started (no launch intent) — bring the chrome back home.
+                awaitingReturn = false
+                returnTick++
+                return@launch
+            }
+            // Safety valve: if the app never covers us (still resumed well past the start), don't
+            // sit chrome-less on the wallpaper — come back home.
+            delay(LAUNCH_COVER_TIMEOUT_MS)
+            if (awaitingReturn && lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) {
                 awaitingReturn = false
                 returnTick++
             }
