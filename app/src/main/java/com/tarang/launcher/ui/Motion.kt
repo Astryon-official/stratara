@@ -79,9 +79,10 @@ fun frameTopBarSpec(style: AnimStyle): AnimationSpec<Float> = when (style) {
 const val DEPTH_LAUNCH_SLOWDOWN = 1f
 
 /** How long [LauncherScreen] waits after starting the DEPTH launch animation before actually starting
- *  the app. 0 = launch immediately (the app's own start-up keeps the ripple visible anyway); raise it
- *  toward the top-bar duration to watch the full move during motion debugging. */
-const val DEPTH_LAUNCH_HOLD_MS = 0L
+ *  the app — sized to the dock ripple's duration so the whole move always plays before the app window
+ *  can cover it. Without the hold, a warm app appears within ~100ms and cuts the ripple off; with it,
+ *  every launch reads the same: click → full ripple → the app arrives. */
+const val DEPTH_LAUNCH_HOLD_MS = 850L
 
 /** Dock layer during an app launch ([entering]) / return (!entering). */
 fun launchDockSpec(style: AnimStyle, entering: Boolean): AnimationSpec<Float> = when (style) {

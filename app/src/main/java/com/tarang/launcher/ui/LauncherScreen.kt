@@ -308,13 +308,14 @@ fun LauncherScreen(
     fun launchApp(packageName: String) {
         // No window scale-up — the app opens with the system default while the launcher chrome does the
         // dock-drop / bar-rise dissolve (the same motion as entering Frame Art).
+        if (awaitingReturn) return // a launch is already in flight (e.g. a second OK during the hold)
         sounds.click()
         launchDockIndex = uiState.dockApps.indexOfFirst { it.packageName == packageName }
         scope.launch {
             awaitingReturn = true
             launchTick++
-            // Optional motion-debug hold (see Motion.kt): lets the chrome animation play out before
-            // the app window covers it. 0 in normal use — the app starts immediately.
+            // DEPTH holds the actual app start until the dock ripple has fully played (see Motion.kt),
+            // so a fast-starting app can't cover the move halfway through.
             if (style == AnimStyle.DEPTH && DEPTH_LAUNCH_HOLD_MS > 0) delay(DEPTH_LAUNCH_HOLD_MS)
             val launched = viewModel.launchApp(packageName, null)
             if (!launched) {
