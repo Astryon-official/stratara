@@ -8,6 +8,7 @@ import androidx.compose.ui.graphics.GraphicsLayerScope
 import androidx.compose.ui.graphics.TransformOrigin
 import com.tarang.launcher.data.AnimStyle
 import kotlin.math.abs
+import kotlin.math.pow
 
 /**
  * The motion vocabulary for the four big transitions (enter/exit Frame Art, launch/return an app),
@@ -234,8 +235,9 @@ class DockRipple(val origin: Int, count: Int, private val progress: () -> Float)
     /** The staggered progress for dock tile [index]. */
     fun tileProgress(index: Int): Float = staged(abs(index - origin))
 
-    /** How much tile [index] grows: the launched tile is the hero (1.5×); the rings grow less. */
-    fun tileGrowth(index: Int): Float = if (index == origin) RIPPLE_GROWTH_ORIGIN else RIPPLE_GROWTH
+    /** How much tile [index] grows: the launched tile is the hero (1.5×); each ring outward carries
+     *  less energy than the one before, so the far tiles mostly drift and dissolve. */
+    fun tileGrowth(index: Int): Float = growthOfRing(abs(index - origin))
 
     /**
      * Signed horizontal spread for tile [index], in tile widths: each inner ring contributes its
@@ -254,14 +256,22 @@ class DockRipple(val origin: Int, count: Int, private val progress: () -> Float)
         return if (index >= origin) sum else -sum
     }
 
-    private fun growthOfRing(ring: Int): Float = if (ring == 0) RIPPLE_GROWTH_ORIGIN else RIPPLE_GROWTH
+    // The wave loses energy as it spreads: ring 1 grows by RIPPLE_GROWTH, each further ring by
+    // RIPPLE_DECAY of the previous one (0.50 → 0.22 → 0.14 → 0.09 → …).
+    private fun growthOfRing(ring: Int): Float = when (ring) {
+        0 -> RIPPLE_GROWTH_ORIGIN
+        else -> RIPPLE_GROWTH * RIPPLE_DECAY.pow(ring - 1)
+    }
 
     /** The trailing progress for the dock chrome layer (frosted bar + grid). */
     fun chromeProgress(): Float = staged(slots)
 }
 
-/** How much a rippling ring tile grows (scale goes to 1 + this). */
-private const val RIPPLE_GROWTH = 0.30f
+/** How much the first ring (the hero's direct neighbours) grows (scale goes to 1 + this). */
+private const val RIPPLE_GROWTH = 0.22f
+
+/** Growth carried over from each ring to the next — the wave's energy falloff. */
+private const val RIPPLE_DECAY = 0.65f
 
 /** How much the launched tile itself grows — the hero of the move. */
 private const val RIPPLE_GROWTH_ORIGIN = 0.50f
