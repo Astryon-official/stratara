@@ -6,11 +6,16 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.tarang.launcher.data.AppInfo
+import com.tarang.launcher.data.AppListCache
 import com.tarang.launcher.data.AppRepository
 import com.tarang.launcher.data.FavoritesStore
+import com.tarang.launcher.data.IconLoader
 import com.tarang.launcher.data.LauncherSettings
 import com.tarang.launcher.data.SettingsStore
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -32,6 +37,8 @@ class LauncherViewModel(
     private val repository: AppRepository,
     private val favoritesStore: FavoritesStore,
     private val settingsStore: SettingsStore,
+    private val appListCache: AppListCache,
+    private val iconLoader: IconLoader,
 ) : ViewModel() {
 
     private val apps = MutableStateFlow<List<AppInfo>>(emptyList())
@@ -55,11 +62,26 @@ class LauncherViewModel(
             )
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), LauncherUiState())
 
-    val settings: StateFlow<LauncherSettings> =
-        settingsStore.settings.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), LauncherSettings())
+    /** Null until the first DataStore read lands — the UI holds its (black) first frame on it
+     *  instead of flashing default settings (wrong wallpaper/theme) and re-rendering. */
+    val settings: StateFlow<LauncherSettings?> =
+        settingsStore.settings.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    private var prefetchJob: Job? = null
 
     init {
-        refresh()
+        viewModelScope.launch {
+            // Cold start: publish the last-known app list from disk so the dock/grid draw on the
+            // first frame instead of waiting out the PackageManager scan. The real scan follows
+            // (briefly deferred on a cache hit, so it doesn't contend with first-frame rendering).
+            val cached = appListCache.read()
+            if (!cached.isNullOrEmpty() && apps.value.isEmpty()) {
+                apps.value = cached
+                loading.value = false
+                delay(COLD_START_SCAN_DELAY_MS)
+            }
+            scan(showLoading = apps.value.isEmpty())
+        }
         // Keep the list live: refresh when apps are installed/removed/updated (debounced to
         // coalesce the burst of broadcasts a single install produces).
         viewModelScope.launch {
@@ -70,15 +92,29 @@ class LauncherViewModel(
     /** [showLoading] is false for background refreshes (e.g. install/uninstall) so the grid
      *  doesn't flash the "Loading…" placeholder while the user is looking at it. */
     fun refresh(showLoading: Boolean = true) {
-        viewModelScope.launch {
-            if (showLoading) loading.value = true
-            val loaded = repository.loadApps()
-            apps.value = loaded
-            loading.value = false
-            if (!favoritesStore.seeded.first()) {
-                favoritesStore.setFavorites(loaded.take(DEFAULT_DOCK_COUNT).map { it.packageName })
-                favoritesStore.markSeeded()
-            }
+        viewModelScope.launch { scan(showLoading) }
+    }
+
+    private suspend fun scan(showLoading: Boolean) {
+        if (showLoading) loading.value = true
+        val loaded = repository.loadApps()
+        apps.value = loaded
+        loading.value = false
+        appListCache.write(loaded)
+        if (!favoritesStore.seeded.first()) {
+            favoritesStore.setFavorites(loaded.take(DEFAULT_DOCK_COUNT).map { it.packageName })
+            favoritesStore.markSeeded()
+        }
+        prefetchTiles(loaded)
+    }
+
+    /** Warms the tile-art disk cache for every app (sequentially, after a beat) so off-screen grid
+     *  tiles — and the whole next cold start — load from disk instead of the slow PM resolve. */
+    private fun prefetchTiles(apps: List<AppInfo>) {
+        prefetchJob?.cancel()
+        prefetchJob = viewModelScope.launch(Dispatchers.IO) {
+            delay(PREFETCH_DELAY_MS)
+            for (app in apps) runCatching { iconLoader.loadTile(app) }
         }
     }
 
@@ -146,12 +182,21 @@ class LauncherViewModel(
     companion object {
         private const val DEFAULT_DOCK_COUNT = 5
 
+        /** How long a cache-hit cold start defers the verify scan, keeping the CPU free while the
+         *  first frames render. Package broadcasts still trigger an immediate refresh. */
+        private const val COLD_START_SCAN_DELAY_MS = 1_500L
+
+        /** How long after a scan the tile prefetch starts (lets the visible tiles load first). */
+        private const val PREFETCH_DELAY_MS = 3_000L
+
         fun provideFactory(
             repository: AppRepository,
             favoritesStore: FavoritesStore,
             settingsStore: SettingsStore,
+            appListCache: AppListCache,
+            iconLoader: IconLoader,
         ): ViewModelProvider.Factory = viewModelFactory {
-            initializer { LauncherViewModel(repository, favoritesStore, settingsStore) }
+            initializer { LauncherViewModel(repository, favoritesStore, settingsStore, appListCache, iconLoader) }
         }
     }
 }

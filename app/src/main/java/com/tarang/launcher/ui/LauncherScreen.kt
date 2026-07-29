@@ -1,5 +1,6 @@
 package com.tarang.launcher.ui
 
+import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -105,10 +106,15 @@ fun LauncherScreen(
             container.appRepository,
             container.favoritesStore,
             container.settingsStore,
+            container.appListCache,
+            container.iconLoader,
         ),
     )
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    val settings by viewModel.settings.collectAsStateWithLifecycle()
+    val settingsOrNull by viewModel.settings.collectAsStateWithLifecycle()
+    // Hold the (black) first frame until the real settings land — a few ms — rather than render
+    // default settings (wrong wallpaper/theme) and visibly swap. Never null again after that.
+    val settings = settingsOrNull ?: return
     var showSettings by remember { mutableStateOf(false) }
     val tuneFocus = remember { FocusRequester() }
 
@@ -135,6 +141,17 @@ fun LauncherScreen(
     val pickFramePhoto: () -> Unit = { pickerForFrame = true; showPicker = true }
     val pickFrameFolder: () -> Unit = { showFolderPicker = true }
     var showTvProbe by remember { mutableStateOf(false) }
+
+    // TTFD beacon: once real content (not the loading placeholder) has rendered, tell the system the
+    // launcher is fully drawn — logcat then prints "Fully drawn …", making cold starts measurable.
+    var reportedDrawn by remember { mutableStateOf(false) }
+    val contentReady = !uiState.isLoading && uiState.allApps.isNotEmpty()
+    LaunchedEffect(contentReady) {
+        if (contentReady && !reportedDrawn) {
+            reportedDrawn = true
+            runCatching { (context as? Activity)?.reportFullyDrawn() }
+        }
+    }
 
     // Filter the hidden apps once (not on every recomposition) so the grid list stays stable.
     val visibleGrid = remember(uiState.gridApps, settings.hiddenApps) {

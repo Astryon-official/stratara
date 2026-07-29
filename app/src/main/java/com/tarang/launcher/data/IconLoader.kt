@@ -3,6 +3,8 @@ package com.tarang.launcher.data
 import android.content.ComponentName
 import android.content.Context
 import android.content.pm.PackageManager
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.graphics.drawable.Drawable
 import android.util.LruCache
 import androidx.compose.ui.graphics.Color
@@ -11,6 +13,8 @@ import androidx.core.graphics.drawable.toBitmap
 import androidx.palette.graphics.Palette
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import org.json.JSONObject
+import java.io.File
 
 /**
  * Artwork for one app tile.
@@ -25,7 +29,12 @@ sealed interface TileArt {
 /**
  * Resolves per-app tile artwork (plan §2.3 / §5.3) and a brand accent color. Prefers the app's
  * banner so tiles look like tvOS/Google TV; falls back to icon-on-color when no banner is provided.
- * Cached per package.
+ *
+ * Cached at three levels: an in-memory LRU, then a disk cache (bitmap file + a JSON index carrying
+ * the fallback color), then the full PackageManager resolve (drawable render + Palette — the
+ * expensive path). The disk layer is what makes a cold start cheap: decoding a small cached bitmap
+ * is milliseconds where the full resolve is tens on weak TV CPUs. Entries are keyed to the
+ * package's lastUpdateTime, so an app update re-resolves its art.
  */
 class IconLoader(context: Context) {
 
@@ -33,19 +42,19 @@ class IconLoader(context: Context) {
     private val tileCache = LruCache<String, TileArt>(CACHE_ENTRIES)
     private val colorCache = LruCache<String, Int>(CACHE_ENTRIES)
 
+    private val diskDir = File(context.applicationContext.filesDir, "tiles")
+    private val indexFile = File(diskDir, "tiles.json")
+    private val diskLock = Any()
+    private var diskIndex: MutableMap<String, DiskTile>? = null // lazily loaded under [diskLock]
+
+    /** One disk-cache index entry: what kind of art the bitmap file holds, and when it was resolved. */
+    private data class DiskTile(val banner: Boolean, val color: Int, val stamp: Long)
+
     suspend fun loadTile(app: AppInfo): TileArt {
         tileCache.get(app.packageName)?.let { return it }
         return withContext(Dispatchers.IO) {
-            val banner = resolveBanner(app)
-            val tile = if (banner != null) {
-                TileArt.Banner(banner.toBitmap(BANNER_W, BANNER_H).asImageBitmap())
-            } else {
-                val iconDrawable = resolveIcon(app)
-                TileArt.Fallback(
-                    icon = iconDrawable?.toBitmap(ICON_PX, ICON_PX)?.asImageBitmap(),
-                    color = iconDrawable?.let { Color(colorFromDrawable(it)) } ?: DEFAULT_TILE_COLOR,
-                )
-            }
+            tileCache.get(app.packageName)?.let { return@withContext it }
+            val tile = loadTileFromDisk(app) ?: resolveTile(app)
             tileCache.put(app.packageName, tile)
             tile
         }
@@ -60,6 +69,86 @@ class IconLoader(context: Context) {
             Color(argb)
         }
     }
+
+    // ---- Disk layer ----------------------------------------------------------------------------
+
+    private fun loadTileFromDisk(app: AppInfo): TileArt? {
+        val entry = index()[app.packageName] ?: return null
+        // Re-resolve after an app update. A failed stamp lookup (package gone — e.g. a stale entry
+        // from the cached app list) still serves the disk art: the real scan drops the tile shortly.
+        val current = packageStamp(app.packageName)
+        if (current != UNKNOWN_STAMP && current != entry.stamp) return null
+        val bitmap = runCatching { BitmapFactory.decodeFile(bitmapFile(app.packageName).path) }.getOrNull()
+        return when {
+            entry.banner -> bitmap?.let { TileArt.Banner(it.asImageBitmap()) }
+            else -> TileArt.Fallback(bitmap?.asImageBitmap(), Color(entry.color))
+        }
+    }
+
+    /** The full resolve (drawable render + Palette), persisted to disk for the next cold start. */
+    private fun resolveTile(app: AppInfo): TileArt {
+        val stamp = packageStamp(app.packageName)
+        val banner = resolveBanner(app)
+        if (banner != null) {
+            val bmp = banner.toBitmap(BANNER_W, BANNER_H)
+            persistTile(app.packageName, bmp, DiskTile(banner = true, color = 0, stamp = stamp))
+            return TileArt.Banner(bmp.asImageBitmap())
+        }
+        val iconDrawable = resolveIcon(app)
+        val bmp = iconDrawable?.toBitmap(ICON_PX, ICON_PX)
+        val color = iconDrawable?.let { colorFromDrawable(it) } ?: DEFAULT_TILE_ARGB
+        persistTile(app.packageName, bmp, DiskTile(banner = false, color = color, stamp = stamp))
+        return TileArt.Fallback(bmp?.asImageBitmap(), Color(color))
+    }
+
+    private fun persistTile(pkg: String, bmp: Bitmap?, entry: DiskTile) {
+        runCatching {
+            diskDir.mkdirs()
+            val file = bitmapFile(pkg)
+            if (bmp != null) {
+                // Banners are opaque by spec → JPEG (small). Icons need alpha → PNG (small anyway).
+                val format = if (entry.banner) Bitmap.CompressFormat.JPEG else Bitmap.CompressFormat.PNG
+                file.outputStream().use { bmp.compress(format, 85, it) }
+            } else {
+                file.delete()
+            }
+            synchronized(diskLock) {
+                index()[pkg] = entry
+                writeIndex()
+            }
+        }
+    }
+
+    private fun index(): MutableMap<String, DiskTile> = synchronized(diskLock) {
+        diskIndex ?: loadIndex().also { diskIndex = it }
+    }
+
+    private fun loadIndex(): MutableMap<String, DiskTile> = runCatching {
+        val obj = JSONObject(indexFile.readText())
+        val map = mutableMapOf<String, DiskTile>()
+        for (key in obj.keys()) {
+            val e = obj.getJSONObject(key)
+            map[key] = DiskTile(e.getBoolean("banner"), e.getInt("color"), e.getLong("stamp"))
+        }
+        map
+    }.getOrDefault(mutableMapOf()) // missing/corrupt index → cold resolve rebuilds it
+
+    private fun writeIndex() {
+        runCatching {
+            val obj = JSONObject()
+            for ((pkg, e) in index()) {
+                obj.put(pkg, JSONObject().put("banner", e.banner).put("color", e.color).put("stamp", e.stamp))
+            }
+            indexFile.writeText(obj.toString())
+        }
+    }
+
+    private fun bitmapFile(pkg: String): File = File(diskDir, "$pkg.img")
+
+    private fun packageStamp(pkg: String): Long =
+        runCatching { pm.getPackageInfo(pkg, 0).lastUpdateTime }.getOrDefault(UNKNOWN_STAMP)
+
+    // ---- PackageManager resolve ------------------------------------------------------------------
 
     private fun resolveBanner(app: AppInfo): Drawable? =
         runCatching { pm.getActivityBanner(ComponentName(app.packageName, app.activityName)) }.getOrNull()
@@ -82,7 +171,7 @@ class IconLoader(context: Context) {
         const val BANNER_H = 180 // 16:9 native banner; the UI crops it to the 5:3 tile
         const val ICON_PX = 144
         const val PALETTE_PX = 64
+        const val UNKNOWN_STAMP = -1L
         val DEFAULT_TILE_ARGB = 0xFF2A2A2C.toInt()
-        val DEFAULT_TILE_COLOR = Color(0xFF2A2A2C)
     }
 }
