@@ -2,7 +2,8 @@ package com.tarang.launcher.home
 
 import android.accessibilityservice.AccessibilityService
 import android.content.Intent
-import android.os.SystemClock
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import android.view.accessibility.AccessibilityEvent
 
@@ -18,7 +19,9 @@ import android.view.accessibility.AccessibilityEvent
  */
 class HomeRedirectService : AccessibilityService() {
 
-    private var lastRedirectAt = 0L
+    private val handler = Handler(Looper.getMainLooper())
+    private var lastForegroundPkg: String? = null
+    private var pendingRedirect: Runnable? = null
 
     override fun onServiceConnected() {
         super.onServiceConnected()
@@ -26,6 +29,7 @@ class HomeRedirectService : AccessibilityService() {
     }
 
     override fun onDestroy() {
+        pendingRedirect?.let { handler.removeCallbacks(it) }
         if (instance === this) instance = null
         super.onDestroy()
     }
@@ -33,25 +37,42 @@ class HomeRedirectService : AccessibilityService() {
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         if (event?.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) return
         val pkg = event.packageName?.toString() ?: return
-        if (pkg !in STOCK_LAUNCHERS) return
-
-        // Debounce: the launcher can emit several window events in a burst.
-        val now = SystemClock.uptimeMillis()
-        if (now - lastRedirectAt < DEBOUNCE_MS) return
-        lastRedirectAt = now
-
-        val intent = Intent(this, HomeActivity::class.java).addFlags(
-            Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT,
-        )
-        runCatching { startActivity(intent) }
-            .onFailure { Log.w(TAG, "Home redirect failed", it) }
+        lastForegroundPkg = pkg
+        if (pkg !in STOCK_LAUNCHERS) {
+            // A non-launcher is in front (e.g. an app returned right after a transient system flash
+            // during a VPN connect) — drop any bounce we had queued.
+            pendingRedirect?.let { handler.removeCallbacks(it); pendingRedirect = null }
+            return
+        }
+        // The stock launcher is in front. Queue ONE bounce and do NOT reschedule on later events: the
+        // launcher fires many window events while it draws, and resetting the timer on each would defer
+        // the bounce forever (that was the bug that left the user stranded on the stock launcher). Fire
+        // only if the launcher is STILL in front after the guard, so a brief flash — a VPN connecting —
+        // doesn't yank the user out of the app they're in.
+        if (pendingRedirect == null) {
+            val redirect = Runnable {
+                pendingRedirect = null
+                if (lastForegroundPkg in STOCK_LAUNCHERS) {
+                    val intent = Intent(this, HomeActivity::class.java).addFlags(
+                        Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT,
+                    )
+                    runCatching { startActivity(intent) }
+                        .onFailure { Log.w(TAG, "Home redirect failed", it) }
+                }
+            }
+            pendingRedirect = redirect
+            handler.postDelayed(redirect, GUARD_MS)
+        }
     }
 
     override fun onInterrupt() = Unit
 
     companion object {
         private const val TAG = "HomeRedirect"
-        private const val DEBOUNCE_MS = 800L
+        // How long a stock-launcher foreground must persist before we bounce back to Tarang. Long
+        // enough to let a transient flash (a VPN connect) pass; short enough that returning from an app
+        // snaps back quickly. Tunable.
+        private const val GUARD_MS = 200L
 
         /** The live service instance while it's connected, so the launcher can drive global actions
          *  (e.g. the "Sleep" shortcut) through it. Null when the service isn't enabled/connected. */
