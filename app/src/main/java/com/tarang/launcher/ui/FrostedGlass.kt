@@ -9,6 +9,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
@@ -57,6 +58,13 @@ private const val REFRACTION_AGSL = """
 // upscale the result — the detail is gone to the blur anyway, so it's invisible but much cheaper on a
 // weak TV GPU.
 private const val GLASS_DOWNSCALE = 0.5f
+
+/**
+ * Fades ONLY the blur layer of every frosted surface (the tint/sheen/rim stay). Read at draw time.
+ * 1 = full frost, 0 = no blur (the raw wallpaper shows behind the tint). Used to "clear the glass"
+ * over a moment just before an app launch. A stable lambda so providing it never recomposes.
+ */
+val LocalGlassBlurAlpha = staticCompositionLocalOf<() -> Float> { { 1f } }
 
 /**
  * tvOS "Liquid Glass": blurs the recorded [backdrop] wallpaper directly behind this element (a true
@@ -114,6 +122,7 @@ fun Modifier.frostedGlass(
     // [blur] off → no backdrop effect at all: just the flat tint + sheen + rim (and the caller skips
     // the backdrop capture entirely, so nothing is sampled).
     val effect = if (!blur) null else if (refract) refractEffect else blurEffect
+    val blurAlpha = LocalGlassBlurAlpha.current
 
     return this
         .onGloballyPositioned { offset = it.positionInRoot(); glassSize = it.size }
@@ -121,6 +130,8 @@ fun Modifier.frostedGlass(
         .drawBehind {
             if (effect != null && glassSize.width > 0 && glassSize.height > 0) {
                 layer.renderEffect = effect
+                // Fade just the blur (the tint below stays), so the glass can "clear" before a launch.
+                layer.alpha = blurAlpha()
                 // [live] only gates the expensive re-capture of the backdrop slice. When frozen we
                 // still draw the LAST captured slice, so the glass stays frosted mid-animation instead
                 // of dropping to a near-transparent tint (which read as a flash on Frame Art enter/exit).

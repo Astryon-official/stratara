@@ -81,7 +81,6 @@ import com.tarang.launcher.data.FrameSource
 import com.tarang.launcher.data.LauncherSettings
 import com.tarang.launcher.data.WeatherUnit
 import com.tarang.launcher.di.AppContainer
-import com.tarang.launcher.home.HomeRedirectService
 import com.tarang.launcher.home.HomeSetup
 import com.tarang.launcher.viewmodel.LauncherViewModel
 import kotlinx.coroutines.Dispatchers
@@ -236,22 +235,31 @@ fun LauncherScreen(
     // Smooth frame transition: 0 = launcher chrome present, 1 = full Frame Art (chrome gone, big clock
     // shown). [frameOn] is the target; this animates toward it so the chrome can scale up + slide out
     // and the clock fade in, then reverse on exit.
-    val frameProgress = remember { Animatable(0f) }
-    LaunchedEffect(frameOn) {
-        // Timing per the selected style (see Motion.kt). Read at animation start, so switching styles
-        // at rest takes effect on the next transition.
-        frameProgress.animateTo(if (frameOn) 1f else 0f, frameMasterSpec())
-    }
     // The two chrome layers leave/return on their own timelines for a layered feel — the dock leads,
-    // the top bar trails. The master [frameProgress] above still drives the clock + wallpaper crossfade
-    // and all the gating (chromePresent / frameSettled / focus trap), so these only shape the motion.
+    // the top bar trails. The master [frameProgress] drives the clock + wallpaper crossfade and all the
+    // gating (chromePresent / frameSettled / focus trap); the other two only shape the motion.
+    val frameProgress = remember { Animatable(0f) }
     val dockProgress = remember { Animatable(0f) }
     val topBarProgress = remember { Animatable(0f) }
+    // The frosted glass "clears" (blur fades to 0) before a launch or a Frame Art entry, then re-focuses
+    // gradually on the way back. Only meaningful when glass blur is on. Exposed via LocalGlassBlurAlpha
+    // as a stable lambda, so it drives the draw without recomposing anything.
+    val blurFade = remember { Animatable(1f) }
+    val glassBlurAlpha = remember { { blurFade.value } }
     LaunchedEffect(frameOn) {
-        dockProgress.animateTo(if (frameOn) 1f else 0f, frameDockSpec())
-    }
-    LaunchedEffect(frameOn) {
-        topBarProgress.animateTo(if (frameOn) 1f else 0f, frameTopBarSpec())
+        if (frameOn) {
+            // Entry: clear the glass first (if blur is on), then dissolve into the painting.
+            if (settings.glassBlur) blurFade.animateTo(0f, tween(300))
+            launch { frameProgress.animateTo(1f, frameMasterSpec()) }
+            launch { dockProgress.animateTo(1f, frameDockSpec()) }
+            launch { topBarProgress.animateTo(1f, frameTopBarSpec()) }
+        } else {
+            // Exit: bring the chrome back, then re-focus the glass gradually (over 650ms) at the end.
+            launch { frameProgress.animateTo(0f, frameMasterSpec()) }
+            launch { dockProgress.animateTo(0f, frameDockSpec()) }
+            launch { topBarProgress.animateTo(0f, frameTopBarSpec()) }.join()
+            blurFade.animateTo(1f, tween(650))
+        }
     }
     val frameSettled by remember { derivedStateOf { frameProgress.value > 0.999f } }
     val chromePresent by remember { derivedStateOf { frameProgress.value < 0.999f } }
@@ -318,8 +326,11 @@ fun LauncherScreen(
         sounds.click()
         launchDockIndex = uiState.dockApps.indexOfFirst { it.packageName == packageName }
         launchInFlight = true
-        launchTick++ // start the launch animation now
         scope.launch {
+            // First, when the frosted glass is on, clear it (blur -> 0 over 300ms) before the move — a
+            // two-stage open. With blur off there is nothing to clear, so fly immediately.
+            if (settings.glassBlur) blurFade.animateTo(0f, tween(300))
+            launchTick++ // start the launch animation
             // Hold the actual app start until the dock ripple has played (see Motion.kt), so a
             // fast-starting app can't cover the move halfway through. awaitingReturn stays false through
             // the hold, so a stray resume here can't fire a return.
@@ -368,15 +379,20 @@ fun LauncherScreen(
             // has settled, forget the ripple origin so the tiles shed their extra draw layers.
             dockLaunch.snapTo(1f)
             topBarLaunch.snapTo(1f)
+            // blurFade stays 0 (cleared) through the return — the glass is off while the chrome moves.
             launch {
                 dockLaunch.animateTo(0f, launchDockSpec(entering = false))
                 launchDockIndex = -1
             }
-            launch { topBarLaunch.animateTo(0f, launchTopBarSpec(entering = false)) }
+            launch {
+                topBarLaunch.animateTo(0f, launchTopBarSpec(entering = false))
+                // Chrome is back at rest — re-focus the glass gradually (over 650ms) at the end.
+                blurFade.animateTo(1f, tween(650))
+            }
         }
     }
 
-    CompositionLocalProvider(LocalLauncherColors provides colors) {
+    CompositionLocalProvider(LocalLauncherColors provides colors, LocalGlassBlurAlpha provides glassBlurAlpha) {
     Box(
         modifier = modifier
             .fillMaxSize()
@@ -568,7 +584,6 @@ fun LauncherScreen(
                     onFrameNightDim = viewModel::setFrameNightDim,
                     onNowPlaying = viewModel::setNowPlaying,
                     onNavSounds = viewModel::setNavSounds,
-                    onOpenScreensaverSettings = { openScreensaverSettings(context) },
                     onOpenNotificationAccess = { openNotificationAccess(context) },
                     onOpenAccessibilitySettings = { HomeSetup.openAccessibilitySettings(context) },
                     onOpenAndroidSettings = { openAndroidSettings(context) },
@@ -591,9 +606,6 @@ fun LauncherScreen(
                         TopBar(
                             onOpenSettings = { sounds.click(); showSettings = true },
                             onEnterFrame = { sounds.click(); frameOn = true },
-                            // Best-effort real sleep via the accessibility service; if it isn't
-                            // connected, fall back to entering Frame Art as an ambient "screensaver".
-                            onSleep = { if (!HomeRedirectService.requestSleep()) frameOn = true },
                             nowPlaying = nowPlaying,
                             // Clicking the chip jumps back into whatever app is playing, with the
                             // same launch choreography as a grid tile.
@@ -703,7 +715,6 @@ private const val ChipDownscale = 0.34f
 private fun TopBar(
     onOpenSettings: () -> Unit,
     onEnterFrame: () -> Unit,
-    onSleep: () -> Unit,
     nowPlaying: NowPlaying?,
     onOpenNowPlaying: (String) -> Unit,
     homeWeather: WeatherData?,
@@ -797,14 +808,6 @@ private fun TopBar(
             PillButton(onClick = onEnterFrame, contentDescription = "Frame Art") {
                 Image(
                     painterResource(R.drawable.ic_frame),
-                    contentDescription = null,
-                    modifier = Modifier.size(22.dp),
-                    colorFilter = ColorFilter.tint(colors.text),
-                )
-            }
-            PillButton(onClick = onSleep, contentDescription = "Sleep") {
-                Image(
-                    painterResource(R.drawable.ic_sleep),
                     contentDescription = null,
                     modifier = Modifier.size(22.dp),
                     colorFilter = ColorFilter.tint(colors.text),
@@ -918,15 +921,6 @@ private fun openWifiSettings(context: Context) {
 private fun openAndroidSettings(context: Context) {
     runCatching {
         context.startActivity(Intent(Settings.ACTION_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-    }
-}
-
-private fun openScreensaverSettings(context: Context) {
-    runCatching {
-        context.startActivity(Intent(Settings.ACTION_DREAM_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-    }.onFailure {
-        // Some TVs bury the screensaver under general Settings; fall back there.
-        runCatching { context.startActivity(Intent(Settings.ACTION_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
     }
 }
 
