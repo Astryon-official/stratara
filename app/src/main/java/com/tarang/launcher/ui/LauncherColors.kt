@@ -46,8 +46,10 @@ val DarkLauncherColors = LauncherColors(
     onHighlight = Color.Black,
     chrome = Color.White.copy(alpha = 0.10f),
     textBackdrop = Color.Black.copy(alpha = 0.32f),
-    chromeOpaque = Color.White.copy(alpha = 0.20f),
-    textBackdropOpaque = Color.Black.copy(alpha = 0.45f),
+    // Blur off → a light, see-through tint (no frost), not a heavy fill. Kept dark enough to keep
+    // white text legible over most wallpapers.
+    chromeOpaque = Color.White.copy(alpha = 0.14f),
+    textBackdropOpaque = Color.Black.copy(alpha = 0.30f),
     line = Color.White.copy(alpha = 0.12f),
 )
 
@@ -62,8 +64,9 @@ val LightLauncherColors = LauncherColors(
     onHighlight = Color.White,
     chrome = Color.White.copy(alpha = 0.42f),
     textBackdrop = Color.White.copy(alpha = 0.55f),
-    chromeOpaque = Color.White.copy(alpha = 0.40f),
-    textBackdropOpaque = Color.White.copy(alpha = 0.50f),
+    // Blur off → a light, see-through tint (no frost), not a heavy fill.
+    chromeOpaque = Color.White.copy(alpha = 0.28f),
+    textBackdropOpaque = Color.White.copy(alpha = 0.34f),
     line = Color(0x1F000000),
 )
 

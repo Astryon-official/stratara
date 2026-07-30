@@ -598,12 +598,12 @@ fun LauncherScreen(
                             homeWeather = if (settings.weatherOnHome) weather else null,
                             tuneFocus = tuneFocus,
                             backdrop = backdrop,
-                            // Keep the glass live through the Frame Art transition (the big full-screen
-                            // backdrop capture is already skipped while framePartly), so the chrome stays
-                            // frosted as it slides out and re-captures immediately as it returns. Only an
-                            // app-launch/return zoom freezes it (drawing the last frosted slice).
-                            glassLive = !transitioning,
-                            // Full quality (edge refraction) only at rest; drop it while anything moves.
+                            // Drop the blur entirely while the chrome moves (a launch OR a Frame Art
+                            // transition): the blur is a per-frame GPU pass and re-blurring moving,
+                            // fading chips is the biggest jank source on a weak TV GPU. Moving chips fall
+                            // back to the flat translucent tint — imperceptible mid-fade, and it holds
+                            // 60fps through the transition. Full frosted glass returns at rest.
+                            glassLive = !transitioning && !frameMoving,
                             glassRefract = !transitioning && !frameMoving,
                             glassBlur = settings.glassBlur,
                         )
@@ -644,7 +644,7 @@ fun LauncherScreen(
                                 onHideApp = { viewModel.setAppHidden(it, true) },
                                 onAppInfo = { viewModel.openAppInfo(it) },
                                 onUninstall = { viewModel.uninstallApp(it) },
-                                glassLive = !transitioning,
+                                glassLive = !transitioning && !frameMoving,
                                 glassRefract = !transitioning && !frameMoving,
                                 glassBlur = settings.glassBlur,
                                 modifier = Modifier.fillMaxSize(),
@@ -693,6 +693,9 @@ fun LauncherScreen(
 // family of chips rather than mixed widgets (the clock used to be a squarer rounded-rect).
 private val ChipHeight = 56.dp
 private val ChipShape = RoundedCornerShape(percent = 50)
+// The top-bar chips are small and heavily blurred, so a coarser capture (≈1/3 res) is invisible but
+// cuts the blur's pixel count to ~4/9 of the dock's half-res. The dock keeps the default (0.5).
+private const val ChipDownscale = 0.34f
 
 @Composable
 private fun TopBar(
@@ -735,14 +738,14 @@ private fun TopBar(
             Clock(
                 modifier = Modifier
                     .height(ChipHeight)
-                    .frostedGlass(backdrop, ChipShape, tint = tint, live = glassLive, refract = glassRefract, blur = glassBlur)
+                    .frostedGlass(backdrop, ChipShape, tint = tint, live = glassLive, refract = glassRefract, blur = glassBlur && glassLive, downscale = ChipDownscale)
                     .padding(horizontal = 20.dp),
             )
             homeWeather?.let { w ->
                 Row(
                     modifier = Modifier
                         .height(ChipHeight)
-                        .frostedGlass(backdrop, ChipShape, tint = tint, live = glassLive, refract = glassRefract, blur = glassBlur)
+                        .frostedGlass(backdrop, ChipShape, tint = tint, live = glassLive, refract = glassRefract, blur = glassBlur && glassLive, downscale = ChipDownscale)
                         .padding(horizontal = 16.dp),
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                     verticalAlignment = Alignment.CenterVertically,
@@ -779,7 +782,7 @@ private fun TopBar(
             modifier = Modifier
                 .align(Alignment.CenterEnd)
                 .height(ChipHeight)
-                .frostedGlass(backdrop, ChipShape, tint = tint, live = glassLive, refract = glassRefract, blur = glassBlur)
+                .frostedGlass(backdrop, ChipShape, tint = tint, live = glassLive, refract = glassRefract, blur = glassBlur && glassLive, downscale = ChipDownscale)
                 .padding(horizontal = 8.dp),
             horizontalArrangement = Arrangement.spacedBy(4.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -863,7 +866,7 @@ private fun NowPlayingChip(
         onClick = onClick,
         modifier = Modifier
             .height(ChipHeight)
-            .frostedGlass(backdrop, ChipShape, tint = tint, live = glassLive, refract = glassRefract, blur = glassBlur)
+            .frostedGlass(backdrop, ChipShape, tint = tint, live = glassLive, refract = glassRefract, blur = glassBlur && glassLive, downscale = ChipDownscale)
             .semantics { contentDescription = "Now playing: ${nowPlaying.title}. Open app" },
         shape = ClickableSurfaceDefaults.shape(ChipShape),
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1.04f),

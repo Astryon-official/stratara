@@ -206,7 +206,7 @@ fun LauncherContent(
                                 .matchParentSize()
                                 // No per-app accent on the dock: it kept re-tinting on every hover (a
                                 // visible flicker + redraw). A stable chrome tint keeps the dock calm.
-                                .frostedGlass(backdrop, DockShape, tint = if (glassBlur) colors.chrome else colors.chromeOpaque, live = glassLive, refract = glassRefract, blur = glassBlur),
+                                .frostedGlass(backdrop, DockShape, tint = if (glassBlur) colors.chrome else colors.chromeOpaque, live = glassLive, refract = glassRefract, blur = glassBlur && glassLive),
                         )
                         Box(modifier = Modifier.padding(DockPad)) {
                         AppRow(

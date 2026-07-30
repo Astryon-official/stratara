@@ -83,20 +83,23 @@ fun Modifier.frostedGlass(
     live: Boolean = true,
     refract: Boolean = true,
     blur: Boolean = true,
+    // Capture/blur resolution fraction. Smaller = fewer pixels through the blur kernel = cheaper, at
+    // the cost of a coarser frost — invisible on the small top-bar chips, so they pass a lower value.
+    downscale: Float = GLASS_DOWNSCALE,
 ): Modifier {
     val layer = rememberGraphicsLayer()
     var offset by remember { mutableStateOf(Offset.Zero) }
     var glassSize by remember { mutableStateOf(IntSize.Zero) }
     val supportsBlur = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
     val supportsShader = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
-    // Blur runs on the half-res copy, so halve the kernel too (it's upscaled back afterwards).
-    val blurPx = with(LocalDensity.current) { blurRadius.toPx() } * GLASS_DOWNSCALE
+    // Blur runs on the downscaled copy, so scale the kernel to match (it's upscaled back afterwards).
+    val blurPx = with(LocalDensity.current) { blurRadius.toPx() } * downscale
     // Beveled edge: a bright specular highlight at the top-left fading to a faint shadow bottom-right.
     val rim = Brush.linearGradient(listOf(Color.White.copy(alpha = 0.5f), Color.Black.copy(alpha = 0.12f)))
-    // Half-resolution capture/blur size.
+    // Downscaled capture/blur size.
     val dsSize = IntSize(
-        (glassSize.width * GLASS_DOWNSCALE).toInt().coerceAtLeast(1),
-        (glassSize.height * GLASS_DOWNSCALE).toInt().coerceAtLeast(1),
+        (glassSize.width * downscale).toInt().coerceAtLeast(1),
+        (glassSize.height * downscale).toInt().coerceAtLeast(1),
     )
 
     // Liquid glass is on at rest: build the refraction shader wherever the device supports AGSL
@@ -122,15 +125,15 @@ fun Modifier.frostedGlass(
                 // still draw the LAST captured slice, so the glass stays frosted mid-animation instead
                 // of dropping to a near-transparent tint (which read as a flash on Frame Art enter/exit).
                 if (live) {
-                    // Capture the backdrop slice at half resolution (scale the draw down into dsSize).
+                    // Capture the backdrop slice at the downscaled resolution (scale the draw down into dsSize).
                     layer.record(dsSize) {
-                        scale(GLASS_DOWNSCALE, GLASS_DOWNSCALE, pivot = Offset.Zero) {
+                        scale(downscale, downscale, pivot = Offset.Zero) {
                             translate(-offset.x, -offset.y) { drawLayer(backdrop) }
                         }
                     }
                 }
-                // Upscale the blurred half-res slice back to full size.
-                scale(1f / GLASS_DOWNSCALE, 1f / GLASS_DOWNSCALE, pivot = Offset.Zero) {
+                // Upscale the blurred downscaled slice back to full size.
+                scale(1f / downscale, 1f / downscale, pivot = Offset.Zero) {
                     drawLayer(layer)
                 }
             }
