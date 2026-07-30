@@ -2,19 +2,19 @@ package com.tarang.launcher.ui
 
 import androidx.compose.animation.core.AnimationSpec
 import androidx.compose.animation.core.CubicBezierEasing
-import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.Easing
 import androidx.compose.animation.core.tween
 import androidx.compose.ui.graphics.GraphicsLayerScope
 import androidx.compose.ui.graphics.TransformOrigin
-import com.tarang.launcher.data.AnimStyle
 import kotlin.math.abs
 import kotlin.math.pow
 
 /**
- * The motion vocabulary for the four big transitions (enter/exit Frame Art, launch/return an app),
- * factored out of [LauncherScreen] so each [AnimStyle] is one coherent, comparable package of
- * timing + transform. The launcher drives two chrome layers on shared timelines (the dock leads, the
- * top bar trails); this file decides, per style, HOW those layers move and how fast.
+ * The motion vocabulary for the launcher's transitions (enter/exit Frame Art, launch/return an app).
+ *
+ * Every transition is a Depth move: the home screen recedes into a painting on Frame Art, and dives
+ * toward an app on launch. The launcher drives two chrome layers on shared timelines — the dock leads,
+ * the top bar trails.
  *
  * Progress convention everywhere: 0f = home (chrome fully present), 1f = gone (Frame Art / app open).
  */
@@ -22,167 +22,62 @@ import kotlin.math.pow
 /** The two chrome layers the launcher animates independently. */
 enum class ChromeLayer { TOP_BAR, DOCK }
 
-// Easings shared across styles. StandardEase is Material/iOS-ish accelerate-then-settle; Decel is a
-// pure ease-out (rush in, glide to rest — used on returns); Accel is ease-in (start slow, fly away).
+// Easings. StandardEase is Material/iOS-ish accelerate-then-settle; AccelEase is ease-in (start slow,
+// fly away); OvershootEase is a gentle ease-out-back that rides just past the target and settles — used
+// on the settling direction so the chrome lands home with a subtle bounce. The overshoot stays
+// invisible on the way out, where the chrome has already faded to alpha 0 before the tail.
 private val StandardEase = CubicBezierEasing(0.4f, 0.0f, 0.2f, 1f)
-private val DecelEase = CubicBezierEasing(0.0f, 0.0f, 0.2f, 1f)
 private val AccelEase = CubicBezierEasing(0.4f, 0.0f, 1f, 1f)
 
-// A gentle ease-out-back (softened from the classic 1.56 overshoot): the value rides just past its
-// target and settles back. DEPTH uses it on the *settling* direction so chrome lands home with a
-// subtle bounce. The overshoot only reads on the return/exit move — on the way out the chrome has
-// already faded to alpha 0 before the tail, so it stays invisible there.
-private val OvershootEase = CubicBezierEasing(0.34f, 1.45f, 0.64f, 1f)
-
-// GLIDE's progress (0..1) is multiplied by the box height (~950px) to drive translation, so a spring's
-// default 0.01 visibility threshold would let it "settle" a visible ~9px from the target and then snap
-// there on the last frame. A sub-pixel threshold makes the tail land smoothly on the resting position.
-private const val GLIDE_THRESHOLD = 0.0002f
-
-// GLIDE felt too fast on real TV hardware, so slow every glide spring ~2.5×. A spring's settling time
-// scales with 1/√stiffness, so 2.5× slower ≈ stiffness ÷ 2.5² (÷6.25). Dividing here (and keeping the
-// original stiffness numbers at the call sites) preserves the relative pacing between the layers.
-private const val GLIDE_SLOWDOWN = 6.25f
-
-private fun glideSpring(dampingRatio: Float, stiffness: Float): AnimationSpec<Float> =
-    spring(dampingRatio, stiffness / GLIDE_SLOWDOWN, visibilityThreshold = GLIDE_THRESHOLD)
-
-// BASELINE now settles its Frame Art transition on a critically damped spring (no overshoot). A spring
-// redirects mid-flight, so a quick toggle of Frame Art glides to the new target instead of restarting
-// a fixed tween — the "fluid, interruptible" feel. The launch specs stay tweens (their ease-in
-// "fly away" is intentional and one-shot). A sub-pixel threshold stops the tail snapping, since the
-// progress drives ~950px of translation.
-private const val BASE_THRESHOLD = 0.0002f
-private fun baseSpring(stiffness: Float): AnimationSpec<Float> =
-    spring(dampingRatio = 1f, stiffness = stiffness, visibilityThreshold = BASE_THRESHOLD)
+// A gentle ease-out-back: the value rides just past its target and settles back (the subtle Depth
+// bounce). This is a CLOSED-FORM function of t, NOT a CubicBezierEasing: a bezier whose Y control
+// point is above 1 (an overshoot) makes Compose's x-solver throw "has no solution" at t≈1 and CRASH
+// the whole app on the settling frame of the return animation. A direct formula has no solver, so it
+// can never crash. [OVERSHOOT] sets how far past the target it rides.
+private const val OVERSHOOT = 0.9f
+private val OvershootEase = Easing { t ->
+    val u = t - 1f
+    1f + (OVERSHOOT + 1f) * u * u * u + OVERSHOOT * u * u
+}
 
 // ---------------------------------------------------------------------------------------------------
 // Timing — the AnimationSpecs the launcher's Animatables run on. Frame transitions are calm/slow; app
-// launches are quick. BASELINE/DEPTH use tuned tweens; GLIDE uses springs so it decelerates
-// naturally and stays interruptible.
+// launches are quick. Shared across both launch styles.
 // ---------------------------------------------------------------------------------------------------
 
 /** Master progress spec (drives clock reveal, art crossfade + all the gating). */
-fun frameMasterSpec(style: AnimStyle): AnimationSpec<Float> = when (style) {
-    AnimStyle.BASELINE -> baseSpring(18f)
-    AnimStyle.GLIDE -> glideSpring(dampingRatio = 1f, stiffness = 130f)
-    AnimStyle.DEPTH -> tween(1100, easing = StandardEase)
-}
+fun frameMasterSpec(): AnimationSpec<Float> = tween(1100, easing = StandardEase)
 
-/** Dock layer during a Frame Art enter/exit (the dock leads — shortest/stiffest). */
-fun frameDockSpec(style: AnimStyle): AnimationSpec<Float> = when (style) {
-    AnimStyle.BASELINE -> baseSpring(32f)
-    AnimStyle.GLIDE -> glideSpring(dampingRatio = 1f, stiffness = 190f)
-    AnimStyle.DEPTH -> tween(900, easing = OvershootEase)
-}
+/** Dock layer during a Frame Art enter/exit (the dock leads). */
+fun frameDockSpec(): AnimationSpec<Float> = tween(900, easing = OvershootEase)
 
-/** Top bar layer during a Frame Art enter/exit (trails the dock — longest/softest). */
-fun frameTopBarSpec(style: AnimStyle): AnimationSpec<Float> = when (style) {
-    AnimStyle.BASELINE -> baseSpring(22f)
-    AnimStyle.GLIDE -> glideSpring(dampingRatio = 1f, stiffness = 110f)
-    AnimStyle.DEPTH -> tween(1100, easing = OvershootEase)
-}
+/** Top bar layer during a Frame Art enter/exit (trails the dock). */
+fun frameTopBarSpec(): AnimationSpec<Float> = tween(1100, easing = OvershootEase)
 
-// Debug multiplier on DEPTH's launch/return timings: 1f in normal use; raise it (e.g. to 4f) to
-// slow-motion the dock ripple for on-device inspection. The real durations live in the specs below.
-const val DEPTH_LAUNCH_SLOWDOWN = 1f
-
-/** How long [LauncherScreen] waits after starting the DEPTH launch animation before actually starting
- *  the app. Without a hold, a warm app appears within ~100ms and cuts the ripple off. Tuned a bit
- *  short of the dock ripple's 850ms: the app window takes a beat to appear anyway, so the move still
- *  plays out while the slow-app wallpaper wait stays shorter. */
-const val DEPTH_LAUNCH_HOLD_MS = 400L
+/** How long [LauncherScreen] waits after starting the launch animation before it actually starts the
+ *  app. Without a hold a warm app appears within ~100ms and cuts the ripple off. Tuned a bit short of
+ *  the dock ripple, since the app window takes a beat to appear anyway. */
+const val DEPTH_LAUNCH_HOLD_MS = 300L
 
 /** Dock layer during an app launch ([entering]) / return (!entering). */
-fun launchDockSpec(style: AnimStyle, entering: Boolean): AnimationSpec<Float> = when (style) {
-    AnimStyle.BASELINE -> tween(600, easing = if (entering) AccelEase else DecelEase)
-    AnimStyle.GLIDE -> glideSpring(dampingRatio = if (entering) 1f else 0.82f, stiffness = 340f)
-    // Return dives back with a subtle overshoot; the launch itself still accelerates away. Tuned
-    // on-device for the dock ripple (stagger + lift + burst needs more room than a flat dissolve).
-    AnimStyle.DEPTH -> tween(
-        ((if (entering) 850 else 1000) * DEPTH_LAUNCH_SLOWDOWN).toInt(),
-        easing = if (entering) AccelEase else OvershootEase,
-    )
-}
+fun launchDockSpec(entering: Boolean): AnimationSpec<Float> =
+    tween(if (entering) 850 else 1000, easing = if (entering) AccelEase else OvershootEase)
 
 /** Top bar layer during an app launch / return. */
-fun launchTopBarSpec(style: AnimStyle, entering: Boolean): AnimationSpec<Float> = when (style) {
-    AnimStyle.BASELINE -> tween(900, easing = if (entering) AccelEase else DecelEase)
-    AnimStyle.GLIDE -> glideSpring(dampingRatio = if (entering) 1f else 0.9f, stiffness = 240f)
-    AnimStyle.DEPTH -> tween(
-        ((if (entering) 930 else 1140) * DEPTH_LAUNCH_SLOWDOWN).toInt(),
-        easing = if (entering) AccelEase else OvershootEase,
-    )
-}
+fun launchTopBarSpec(entering: Boolean): AnimationSpec<Float> =
+    tween(if (entering) 930 else 1140, easing = if (entering) AccelEase else OvershootEase)
 
 // ---------------------------------------------------------------------------------------------------
-// Transforms — applied inside the chrome layers' graphicsLayer blocks. [frameP] and [launchP] are the
-// two progresses; in practice only one is non-zero at a time (you can't launch an app mid-frame), so
-// styles that want different behaviour for the two moves (DEPTH) just branch on which is active.
+// Chrome transforms — applied inside the chrome layers' graphicsLayer blocks. [frameP] recedes toward
+// Frame Art (scale < 1); [launchP] approaches into an app (scale > 1). Only one is non-zero at a time.
 // ---------------------------------------------------------------------------------------------------
 
-/**
- * Shape the chrome for the current style. Called from the layer's `graphicsLayer {}` where `size` is
- * the layer's own size.
- */
-fun GraphicsLayerScope.applyChrome(
-    style: AnimStyle,
-    layer: ChromeLayer,
-    frameP: Float,
-    launchP: Float,
-) {
-    when (style) {
-        AnimStyle.BASELINE -> baseline(layer, maxOf(frameP, launchP))
-        AnimStyle.GLIDE -> glide(layer, maxOf(frameP, launchP))
-        AnimStyle.DEPTH -> depth(layer, frameP, launchP)
-    }
-}
-
-/** The shipped motion: dock scales up 1.28× and drops off the bottom, top bar rises off the top. */
-private fun GraphicsLayerScope.baseline(layer: ChromeLayer, p: Float) {
-    when (layer) {
-        ChromeLayer.TOP_BAR -> {
-            translationY = -p * (size.height + 48f)
-            alpha = 1f - (p * 1.7f).coerceAtMost(1f)
-        }
-        ChromeLayer.DOCK -> {
-            val s = 1f + 0.28f * p
-            scaleX = s
-            scaleY = s
-            translationY = p * size.height * 0.55f
-            alpha = 1f - (p * 1.7f).coerceAtMost(1f)
-            transformOrigin = TransformOrigin(0.5f, 0.85f)
-        }
-    }
-}
-
-/** Fluid glide: pure slide-off + fade (no scale-up), the spring timing does the work. */
-private fun GraphicsLayerScope.glide(layer: ChromeLayer, p: Float) {
-    when (layer) {
-        ChromeLayer.TOP_BAR -> {
-            translationY = -p * (size.height + 48f)
-            alpha = 1f - (p * 1.6f).coerceAtMost(1f)
-        }
-        ChromeLayer.DOCK -> {
-            // A whisper of scale-down as it leaves, so it settles rather than just translating.
-            val s = 1f - 0.04f * p
-            scaleX = s
-            scaleY = s
-            translationY = p * size.height * 0.95f
-            alpha = 1f - (p * 1.5f).coerceAtMost(1f)
-            transformOrigin = TransformOrigin(0.5f, 1f)
-        }
-    }
-}
-
-/** Z-axis depth: recede (scale <1) toward Frame Art; approach (scale >1) into an app. */
-private fun GraphicsLayerScope.depth(layer: ChromeLayer, frameP: Float, launchP: Float) {
+/** Shape the chrome for the Depth transition. Called from the layer's `graphicsLayer {}`. */
+fun GraphicsLayerScope.applyChrome(layer: ChromeLayer, frameP: Float, launchP: Float) {
     val p = maxOf(frameP, launchP)
     alpha = 1f - (p * 1.5f).coerceAtMost(1f)
     // No blur: an animated RenderEffect blur on these full-screen layers is far too heavy on weak TV
-    // GPUs (it re-blurs every frame — janks badly on the Chromecast). The scale recede/approach + fade,
-    // plus the art rising forward, carry the depth on their own at essentially no GPU cost.
-    // recede on frame-enter (down to 0.9), approach on launch (up to ~1.14). Mutually exclusive.
+    // GPUs. The scale recede/approach + fade, plus the art rising forward, carry the depth on their own.
     val recede = 1f - 0.10f * frameP
     val approach = 1f + 0.14f * launchP
     val s = recede * approach
@@ -200,24 +95,19 @@ private fun GraphicsLayerScope.depth(layer: ChromeLayer, frameP: Float, launchP:
     }
 }
 
-/**
- * The incoming Frame Art's entrance scale for DEPTH (the art rises forward from a hair larger). [p] is
- * the master frame progress. Returns 1f (no scale) for styles that just crossfade the art.
- */
-fun artEntryScale(style: AnimStyle, p: Float): Float = when (style) {
-    AnimStyle.DEPTH -> 1.06f - 0.06f * p
-    else -> 1f
-}
+/** The incoming Frame Art's entrance scale (the art rises forward from a hair larger). [p] is the
+ *  master frame progress. */
+fun artEntryScale(p: Float): Float = 1.06f - 0.06f * p
 
 // ---------------------------------------------------------------------------------------------------
-// DEPTH dock ripple — launching from the dock, the chosen tile leads: it rises toward the viewer
-// first, then its neighbours ring by ring (distance 1 on each side, then 2, …), and the dock chrome
-// (with the grid) trails last. On the return the same mapping runs backwards, so the chrome re-forms
-// first and the launched tile lands last. Grid launches keep the uniform transform.
+// Dock launch ripple — launching from the dock, the chosen tile leads and its neighbours follow ring by
+// ring (distance 1 on each side, then 2, …); the dock chrome (with the grid) trails last. On the return
+// the mapping runs backwards, so the chrome re-forms first and the launched tile lands last. Grid
+// launches keep the uniform chrome transform.
 // ---------------------------------------------------------------------------------------------------
 
-/** Fraction of the launch timeline across which the ripple's start times are spread; every element
- *  then ramps over the remaining (1 - spread), so the last one still finishes exactly on time. */
+/** Fraction of the launch timeline across which the ripple's start times are spread; every element then
+ *  ramps over the remaining (1 - spread), so the last one still finishes exactly on time. */
 private const val RIPPLE_SPREAD = 0.45f
 
 /** Floor for the master's return overshoot (OvershootEase dips the progress a hair below 0), kept so
@@ -225,11 +115,15 @@ private const val RIPPLE_SPREAD = 0.45f
 private const val RIPPLE_DIP = -0.2f
 
 /**
- * Maps the master dock-launch progress (read lazily via [progress], so it can be sampled per frame
- * in a graphicsLayer block) onto staggered per-tile ramps. [origin] is the launched tile's index in
- * a dock of [count] tiles.
+ * Maps the master dock-launch progress (read lazily via [progress], so it can be sampled per frame in a
+ * graphicsLayer block) onto staggered per-tile ramps. [origin] is the launched tile's index in a dock
+ * of [count] tiles. [style] chooses the per-tile transform.
  */
-class DockRipple(val origin: Int, count: Int, private val progress: () -> Float) {
+class DockRipple(
+    val origin: Int,
+    count: Int,
+    private val progress: () -> Float,
+) {
 
     // Ring slots 0..maxRing for the tiles; one more slot after them for the dock chrome.
     private val slots = maxOf(origin, count - 1 - origin) + 1
@@ -245,23 +139,26 @@ class DockRipple(val origin: Int, count: Int, private val progress: () -> Float)
     /** The staggered progress for dock tile [index]. */
     fun tileProgress(index: Int): Float = staged(abs(index - origin))
 
+    /** The trailing progress for the dock chrome layer (frosted bar + grid). */
+    fun chromeProgress(): Float = staged(slots)
+
+    /** The per-tile transform, read lazily each frame in the tile's own layer. */
+    fun tileLayer(index: Int): GraphicsLayerScope.() -> Unit =
+        { applyDisperseTile(tileProgress(index), tileSpread(index), tileGrowth(index)) }
+
+    // ---- Geometry -------------------------------------------------------------------------------
+
     /** How much tile [index] grows: the launched tile is the hero (1.5×); each ring outward carries
-     *  less energy than the one before, so the far tiles mostly drift and dissolve. */
-    fun tileGrowth(index: Int): Float = growthOfRing(abs(index - origin))
+     *  less energy, so the far tiles mostly drift and dissolve. */
+    private fun tileGrowth(index: Int): Float = growthOfRing(abs(index - origin))
 
     /**
-     * Signed horizontal travel for tile [index], in tile widths. Two parts:
-     *
-     * 1. Anti-merge spread — each inner ring contributes its progress weighted by the mean growth of
-     *    the pair it separates, pushing the tile outward by at least the room its inner neighbours'
-     *    growth consumes, so the rising tiles never merge. Inner rings always lead outer ones, so
-     *    the push can only widen the gaps (and the return re-packs in the same order).
-     * 2. Fly-out — an accelerating exit proportional to the distance from the hero: a zoom about the
-     *    launched tile, so the wave carries every other tile off the sides of the screen while the
-     *    hero stays put as the vanishing point. (p·|p| keeps the sign so the return flies back in
-     *    and the landing dip still nudges inward.)
+     * Signed horizontal travel for tile [index], in tile widths: an anti-merge spread (each inner ring
+     * pushes the tile outward by the room its growing inner neighbours consume) plus an accelerating
+     * fly-out proportional to the distance from the hero (a zoom about the launched tile, so the wave
+     * carries every other tile off the sides while the hero stays the vanishing point).
      */
-    fun tileSpread(index: Int): Float {
+    private fun tileSpread(index: Int): Float {
         val d = abs(index - origin)
         var sum = 0f
         for (k in 0 until d) {
@@ -274,45 +171,50 @@ class DockRipple(val origin: Int, count: Int, private val progress: () -> Float)
     }
 
     // The wave loses energy as it spreads: ring 1 grows by RIPPLE_GROWTH, each further ring by
-    // RIPPLE_DECAY of the previous one (0.50 → 0.22 → 0.14 → 0.09 → …).
+    // RIPPLE_DECAY of the previous one.
     private fun growthOfRing(ring: Int): Float = when (ring) {
         0 -> RIPPLE_GROWTH_ORIGIN
         else -> RIPPLE_GROWTH * RIPPLE_DECAY.pow(ring - 1)
     }
-
-    /** The trailing progress for the dock chrome layer (frosted bar + grid). */
-    fun chromeProgress(): Float = staged(slots)
 }
 
-/** How much the first ring (the hero's direct neighbours) grows (scale goes to 1 + this). */
+/** How much the first ring (the hero's direct neighbours) grows in DISPERSE. */
 private const val RIPPLE_GROWTH = 0.22f
 
-/** Growth carried over from each ring to the next — the wave's energy falloff. */
+/** Growth carried over from each ring to the next in DISPERSE — the wave's energy falloff. */
 private const val RIPPLE_DECAY = 0.65f
 
 /** How much the launched tile itself grows — the hero of the move. */
 private const val RIPPLE_GROWTH_ORIGIN = 0.50f
 
-/** Fly-out distance per ring of separation from the hero, in tile widths at full progress. The
- *  outer tiles clear the screen edge entirely; ring 1 is visibly on its way out when it fades. */
+/** Fly-out distance per ring of separation from the hero, in tile widths at full progress (DISPERSE). */
 private const val RIPPLE_FLY = 1.0f
 
-/** Per-tile transform for the dock ripple: the tile lifts up out of the dock plane while it grows —
- *  staying fully opaque through the rise so the depth reads — then dissolves on the way out. MULTIPLIES
- *  into the layer's current scale/alpha and must run inside the tile's OWN graphicsLayer (the one that
- *  applies the focus scale): alpha < 1 makes a layer composite offscreen clipped to its bounds, so a
- *  separate wrapper layer would crop the focus-scale overflow into a square. */
-fun GraphicsLayerScope.applyDockRippleTile(p: Float, spread: Float, growth: Float) {
-    val visP = p.coerceAtLeast(0f)
-    // Opaque through the first 45% and only fully gone at 90%: the fly-out (and the screen edge)
-    // removes the tiles — the fade just cleans up whatever hasn't left the frame by then.
-    alpha *= 1f - ((visP - 0.45f) / 0.45f).coerceIn(0f, 1f)
+/** Smoothstep — a soft 0→1 ease over [0,1], for dissolves that don't ramp linearly. */
+private fun smoothstep(x: Float): Float = x.coerceIn(0f, 1f).let { it * it * (3f - 2f * it) }
+
+/** Extra mid-flight lift (an arc) for a dispersing tile, in tile heights. */
+private const val DISPERSE_ARC = 0.12f
+
+/**
+ * Per-tile transform for the dock launch: the tile scales up in place first, then rises (on a curve)
+ * and flies out to the side (see [DockRipple.tileSpread]), dissolving on a smooth curve. MULTIPLIES
+ * into the tile's own graphicsLayer (alpha < 1 makes a layer composite offscreen clipped to its
+ * bounds, so a separate wrapper layer would crop the focus-scale overflow into a square).
+ */
+fun GraphicsLayerScope.applyDisperseTile(p: Float, spread: Float, growth: Float) {
+    val vp = p.coerceAtLeast(0f)
+    // Smooth dissolve: opaque through the first third, then ease out (the fly-out and the screen edge
+    // remove the tiles; the fade just cleans up whatever hasn't left the frame).
+    alpha *= 1f - smoothstep((vp - 0.35f) / 0.55f)
+    // Grow in place — no anticipation dip (a pre-shrink read as "shifting up before scaling").
     val s = 1f + growth * p
     scaleX *= s
     scaleY *= s
-    // The lift off the dock: rise by a third of the tile height as it grows (and dip past home on the
-    // return's overshoot, which is the landing bounce). The spread pushes the tile clear of its
-    // growing inner neighbours (see DockRipple.tileSpread).
-    translationY += -0.33f * size.height * p
+    // Lift ramps in AFTER the grow (quadratic, sign-preserving) so the tile pops toward you first and
+    // only then rises — no upward shift before it scales. An extra hump at mid-flight arcs the exit
+    // instead of sending it straight up.
+    val arc = DISPERSE_ARC * size.height * (vp * (1f - vp) * 4f)
+    translationY += -0.33f * size.height * (p * abs(p)) - arc
     translationX += spread * size.width
 }

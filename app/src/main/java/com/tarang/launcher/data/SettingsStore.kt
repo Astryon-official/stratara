@@ -51,7 +51,6 @@ enum class WeatherUnit { CELSIUS, FAHRENHEIT }
  * - [GLIDE]     fluid, spring-driven slides, no blur — cheapest and safest on weak TVs.
  * - [DEPTH]     z-axis: the home plane recedes to a painting, dives into an app (scale + fade).
  */
-enum class AnimStyle { BASELINE, GLIDE, DEPTH }
 
 /** Slideshow switch intervals (seconds) offered for the folder source. */
 val FRAME_INTERVALS = listOf(10, 30, 60, 300, 900)
@@ -78,7 +77,6 @@ data class LauncherSettings(
     /** Light/dark appearance. */
     val theme: ThemeMode = ThemeMode.DARK,
     /** Which transition "personality" the four big moves use (an experiment switch). */
-    val animStyle: AnimStyle = AnimStyle.BASELINE,
     /** Packages the user has hidden from the grid (still launchable, just out of sight). */
     val hiddenApps: Set<String> = emptySet(),
     /** What Frame Art shows (defaults to the current wallpaper). */
@@ -142,7 +140,6 @@ class SettingsStore(context: Context) {
             useAppArtwork = p[USE_APP_ARTWORK] ?: false,
             artworkApps = p[ARTWORK_APPS] ?: emptySet(),
             theme = runCatching { ThemeMode.valueOf(p[THEME] ?: "DARK") }.getOrDefault(ThemeMode.DARK),
-            animStyle = runCatching { AnimStyle.valueOf(p[ANIM_STYLE] ?: "BASELINE") }.getOrDefault(AnimStyle.BASELINE),
             hiddenApps = p[HIDDEN_APPS] ?: emptySet(),
             frameSource = runCatching {
                 FrameSource.valueOf(p[FRAME_SOURCE] ?: "WALLPAPER")
@@ -203,7 +200,6 @@ class SettingsStore(context: Context) {
     }
 
     suspend fun setTheme(mode: ThemeMode) = dataStore.edit { it[THEME] = mode.name }
-    suspend fun setAnimStyle(style: AnimStyle) = dataStore.edit { it[ANIM_STYLE] = style.name }
 
     /** Hides/unhides an app from the grid. */
     suspend fun setAppHidden(packageName: String, hidden: Boolean) = dataStore.edit { p ->
@@ -266,7 +262,6 @@ class SettingsStore(context: Context) {
         val USE_APP_ARTWORK = booleanPreferencesKey("use_app_artwork")
         val ARTWORK_APPS = stringSetPreferencesKey("artwork_apps")
         val THEME = stringPreferencesKey("theme")
-        val ANIM_STYLE = stringPreferencesKey("anim_style")
         val HIDDEN_APPS = stringSetPreferencesKey("hidden_apps")
         val FRAME_SOURCE = stringPreferencesKey("frame_source")
         val FRAME_FOLDER_ID = stringPreferencesKey("frame_folder_id")

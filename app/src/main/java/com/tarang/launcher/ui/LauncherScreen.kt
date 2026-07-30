@@ -77,7 +77,6 @@ import androidx.tv.material3.ExperimentalTvMaterial3Api
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import com.tarang.launcher.R
-import com.tarang.launcher.data.AnimStyle
 import com.tarang.launcher.data.FrameSource
 import com.tarang.launcher.data.LauncherSettings
 import com.tarang.launcher.data.WeatherUnit
@@ -198,8 +197,6 @@ fun LauncherScreen(
     val isDark = rememberIsDark(settings.theme)
     val colors = if (isDark) DarkLauncherColors else LightLauncherColors
 
-    // Which motion "personality" the transitions use (an experiment switch in Appearance).
-    val style = settings.animStyle
 
     // One weather fetch shared by the home top bar and the Frame Art clock (enabled if either surface
     // wants it); each surface then shows it per its own toggle. Now-playing media for the top-bar chip
@@ -243,7 +240,7 @@ fun LauncherScreen(
     LaunchedEffect(frameOn) {
         // Timing per the selected style (see Motion.kt). Read at animation start, so switching styles
         // at rest takes effect on the next transition.
-        frameProgress.animateTo(if (frameOn) 1f else 0f, frameMasterSpec(style))
+        frameProgress.animateTo(if (frameOn) 1f else 0f, frameMasterSpec())
     }
     // The two chrome layers leave/return on their own timelines for a layered feel — the dock leads,
     // the top bar trails. The master [frameProgress] above still drives the clock + wallpaper crossfade
@@ -251,10 +248,10 @@ fun LauncherScreen(
     val dockProgress = remember { Animatable(0f) }
     val topBarProgress = remember { Animatable(0f) }
     LaunchedEffect(frameOn) {
-        dockProgress.animateTo(if (frameOn) 1f else 0f, frameDockSpec(style))
+        dockProgress.animateTo(if (frameOn) 1f else 0f, frameDockSpec())
     }
     LaunchedEffect(frameOn) {
-        topBarProgress.animateTo(if (frameOn) 1f else 0f, frameTopBarSpec(style))
+        topBarProgress.animateTo(if (frameOn) 1f else 0f, frameTopBarSpec())
     }
     val frameSettled by remember { derivedStateOf { frameProgress.value > 0.999f } }
     val chromePresent by remember { derivedStateOf { frameProgress.value < 0.999f } }
@@ -290,6 +287,11 @@ fun LauncherScreen(
     // trails. 0 = home, 1 = launched (chrome gone).
     val dockLaunch = remember { Animatable(0f) }
     val topBarLaunch = remember { Animatable(0f) }
+    // launchInFlight covers the brief hold between the tap and the app actually starting; awaitingReturn
+    // covers the time the app is up (a launcher resume then means "returned"). Keeping them separate
+    // stops a stray resume DURING the hold from firing a return — which read as the animation running
+    // backwards just before the app opened.
+    var launchInFlight by remember { mutableStateOf(false) }
     var awaitingReturn by remember { mutableStateOf(false) }
     var returnTick by remember { mutableIntStateOf(0) }
     var launchTick by remember { mutableIntStateOf(0) }
@@ -301,8 +303,8 @@ fun LauncherScreen(
     // DEPTH-only dock ripple: remember which dock tile launched the app so the transition leads from
     // it (and the return lands on it last). -1 = launched from the grid → uniform transform as before.
     var launchDockIndex by remember { mutableIntStateOf(-1) }
-    val dockRipple = remember(style, launchDockIndex, uiState.dockApps.size) {
-        if (style == AnimStyle.DEPTH && launchDockIndex >= 0 && launchDockIndex < uiState.dockApps.size) {
+    val dockRipple = remember(launchDockIndex, uiState.dockApps.size) {
+        if (launchDockIndex >= 0 && launchDockIndex < uiState.dockApps.size) {
             DockRipple(launchDockIndex, uiState.dockApps.size) { dockLaunch.value }
         } else {
             null
@@ -312,22 +314,25 @@ fun LauncherScreen(
     fun launchApp(packageName: String) {
         // No window scale-up — the app opens with the system default while the launcher chrome does the
         // dock-drop / bar-rise dissolve (the same motion as entering Frame Art).
-        if (awaitingReturn) return // a launch is already in flight (e.g. a second OK during the hold)
+        if (launchInFlight || awaitingReturn) return // ignore taps during the hold or while in an app
         sounds.click()
         launchDockIndex = uiState.dockApps.indexOfFirst { it.packageName == packageName }
+        launchInFlight = true
+        launchTick++ // start the launch animation now
         scope.launch {
-            awaitingReturn = true
-            launchTick++
-            // DEPTH holds the actual app start until the dock ripple has fully played (see Motion.kt),
-            // so a fast-starting app can't cover the move halfway through.
-            if (style == AnimStyle.DEPTH && DEPTH_LAUNCH_HOLD_MS > 0) delay(DEPTH_LAUNCH_HOLD_MS)
+            // Hold the actual app start until the dock ripple has played (see Motion.kt), so a
+            // fast-starting app can't cover the move halfway through. awaitingReturn stays false through
+            // the hold, so a stray resume here can't fire a return.
+            if (DEPTH_LAUNCH_HOLD_MS > 0) delay(DEPTH_LAUNCH_HOLD_MS)
             val launched = viewModel.launchApp(packageName, null)
+            launchInFlight = false
             if (!launched) {
                 // The app never started (no launch intent) — bring the chrome back home.
-                awaitingReturn = false
                 returnTick++
                 return@launch
             }
+            // The app is starting; from now a launcher resume means we returned from it.
+            awaitingReturn = true
             // Safety valve: if the app never covers us (still resumed well past the start), don't
             // sit chrome-less on the wallpaper — come back home.
             delay(LAUNCH_COVER_TIMEOUT_MS)
@@ -353,8 +358,8 @@ fun LauncherScreen(
         if (launchTick > 0) {
             // Leaving for the app. The dock leads, the top bar trails; per-style timing (Motion.kt). Run
             // them in parallel so each keeps its own duration.
-            launch { dockLaunch.animateTo(1f, launchDockSpec(style, entering = true)) }
-            launch { topBarLaunch.animateTo(1f, launchTopBarSpec(style, entering = true)) }
+            launch { dockLaunch.animateTo(1f, launchDockSpec(entering = true)) }
+            launch { topBarLaunch.animateTo(1f, launchTopBarSpec(entering = true)) }
         }
     }
     LaunchedEffect(returnTick) {
@@ -364,10 +369,10 @@ fun LauncherScreen(
             dockLaunch.snapTo(1f)
             topBarLaunch.snapTo(1f)
             launch {
-                dockLaunch.animateTo(0f, launchDockSpec(style, entering = false))
+                dockLaunch.animateTo(0f, launchDockSpec(entering = false))
                 launchDockIndex = -1
             }
-            launch { topBarLaunch.animateTo(0f, launchTopBarSpec(style, entering = false)) }
+            launch { topBarLaunch.animateTo(0f, launchTopBarSpec(entering = false)) }
         }
     }
 
@@ -493,7 +498,7 @@ fun LauncherScreen(
                     modifier = Modifier.fillMaxSize().graphicsLayer {
                         alpha = frameProgress.value
                         // DEPTH lets the art rise forward from a hair larger; others just crossfade.
-                        val s = artEntryScale(style, frameProgress.value)
+                        val s = artEntryScale(frameProgress.value)
                         scaleX = s
                         scaleY = s
                     },
@@ -541,7 +546,6 @@ fun LauncherScreen(
                     onToggleArtworkApp = viewModel::setArtworkApp,
                     theme = settings.theme,
                     onTheme = viewModel::setTheme,
-                    onAnimStyle = viewModel::setAnimStyle,
                     hiddenApps = uiState.allApps.filter { it.packageName in settings.hiddenApps },
                     onUnhideApp = { viewModel.setAppHidden(it, false) },
                     onFrameSource = viewModel::setFrameSource,
@@ -578,7 +582,6 @@ fun LauncherScreen(
                     Box(
                         modifier = Modifier.fillMaxWidth().graphicsLayer {
                             applyChrome(
-                                style,
                                 ChromeLayer.TOP_BAR,
                                 frameP = topBarProgress.value,
                                 launchP = topBarLaunch.value,
@@ -616,7 +619,6 @@ fun LauncherScreen(
                             .fillMaxWidth()
                             .graphicsLayer {
                                 applyChrome(
-                                    style,
                                     ChromeLayer.DOCK,
                                     frameP = dockProgress.value,
                                     // With a dock ripple, the chrome takes the trailing slot — the

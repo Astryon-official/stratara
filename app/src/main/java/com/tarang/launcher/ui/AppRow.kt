@@ -41,8 +41,8 @@ fun AppRow(
     tileWidth: Dp,
     tileHeight: Dp,
     modifier: Modifier = Modifier,
-    // DEPTH dock-launch ripple: staggers each tile's scale/fade by its distance from the launched
-    // tile. Null for grid rows, other styles, and grid launches.
+    // Dock-launch ripple: staggers each tile's transform by its distance from the launched tile.
+    // Null for grid rows and grid launches.
     ripple: DockRipple? = null,
     firstCardFocusRequester: FocusRequester? = null,
     upFocusRequester: FocusRequester? = null,
@@ -87,9 +87,7 @@ fun AppRow(
                 upFocusRequester = upFocusRequester,
                 isMoving = isMoving,
                 dimmed = movingPackage != null && !isMoving,
-                launchLayer = ripple?.let { r ->
-                    { applyDockRippleTile(r.tileProgress(index), r.tileSpread(index), r.tileGrowth(index)) }
-                },
+                launchLayer = ripple?.tileLayer(index),
                 modifier = Modifier
                     // While rippling, the launched tile draws on top and each ring above the next, so
                     // the growing tile rises OVER its neighbours instead of sliding under them.

@@ -78,7 +78,6 @@ import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.ExperimentalTvMaterial3Api
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
-import com.tarang.launcher.data.AnimStyle
 import com.tarang.launcher.data.AppArtwork
 import com.tarang.launcher.data.AppInfo
 import com.tarang.launcher.data.FRAME_AUTOSTART_TIMEOUTS
@@ -126,7 +125,6 @@ fun SettingsScreen(
     onToggleArtworkApp: (String, Boolean) -> Unit,
     theme: ThemeMode,
     onTheme: (ThemeMode) -> Unit,
-    onAnimStyle: (AnimStyle) -> Unit,
     hiddenApps: List<AppInfo>,
     onUnhideApp: (String) -> Unit,
     onFrameSource: (FrameSource) -> Unit,
@@ -220,7 +218,6 @@ fun SettingsScreen(
                         onToggleArtworkApp = onToggleArtworkApp,
                         theme = theme,
                         onTheme = onTheme,
-                        onAnimStyle = onAnimStyle,
                         onUseFrameArtWallpaper = onUseFrameArtWallpaper,
                         nowPlaying = settings.nowPlaying,
                         onNowPlaying = onNowPlaying,
@@ -342,7 +339,6 @@ private fun AppearancePane(
     onToggleArtworkApp: (String, Boolean) -> Unit,
     theme: ThemeMode,
     onTheme: (ThemeMode) -> Unit,
-    onAnimStyle: (AnimStyle) -> Unit,
     onUseFrameArtWallpaper: (Boolean) -> Unit,
     nowPlaying: Boolean,
     onNowPlaying: (Boolean) -> Unit,
@@ -439,25 +435,6 @@ private fun AppearancePane(
             enabled = nowPlaying,
             onEnabled = onNowPlaying,
             onOpenNotificationAccess = onOpenNotificationAccess,
-        )
-
-        // Last: the transition "personality" — an aesthetic extra. Flip between them and try each
-        // live (enter/exit Frame Art, launch/return an app).
-        SectionLabel("Animation style")
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            ToggleChip("Default", settings.animStyle == AnimStyle.BASELINE) { onAnimStyle(AnimStyle.BASELINE) }
-            ToggleChip("Glide", settings.animStyle == AnimStyle.GLIDE) { onAnimStyle(AnimStyle.GLIDE) }
-            ToggleChip("Depth", settings.animStyle == AnimStyle.DEPTH) { onAnimStyle(AnimStyle.DEPTH) }
-        }
-        Text(
-            when (settings.animStyle) {
-                AnimStyle.BASELINE -> "The default motion: the chrome scales up and flies apart (fixed tweens)."
-                AnimStyle.GLIDE -> "Fluid springs: the chrome glides off and settles. No blur — smoothest on a slow TV."
-                AnimStyle.DEPTH -> "Depth: the home screen recedes into a painting, and dives forward into an app."
-            },
-            color = LocalLauncherColors.current.textDim,
-            fontSize = 13.sp,
-            modifier = Modifier.fillMaxWidth(0.85f),
         )
 
         SectionLabel("Navigation sounds")
