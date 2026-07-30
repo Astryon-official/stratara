@@ -6,6 +6,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
@@ -109,6 +110,15 @@ fun AppCard(
             }
             .alpha(if (dimmed) 0.4f else 1f)
             .shadow(elevation = elevation, shape = tileShape, clip = false)
+            // Focus ring: a scale alone is hard to read over a busy wallpaper, so the focused tile also
+            // gets a soft high-contrast border. (Not while it's flying out in a launch.)
+            .then(
+                if (focused && launchLayer == null) {
+                    Modifier.border(2.dp, LocalLauncherColors.current.text.copy(alpha = 0.9f), tileShape)
+                } else {
+                    Modifier
+                },
+            )
             .then(
                 if (upFocusRequester != null) Modifier.focusProperties { up = upFocusRequester } else Modifier,
             )
