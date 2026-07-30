@@ -147,7 +147,6 @@ fun SettingsScreen(
     onFrameNightDim: (Boolean) -> Unit,
     onNowPlaying: (Boolean) -> Unit,
     onNavSounds: (Boolean) -> Unit,
-    onOpenScreensaverSettings: () -> Unit,
     onOpenNotificationAccess: () -> Unit,
     onOpenAccessibilitySettings: () -> Unit,
     onOpenAndroidSettings: () -> Unit,
@@ -250,7 +249,6 @@ fun SettingsScreen(
                         onShuffle = onFrameShuffle,
                         nightDim = settings.frameNightDim,
                         onNightDim = onFrameNightDim,
-                        onOpenScreensaver = onOpenScreensaverSettings,
                     )
 
                     SettingsSection.WEATHER -> WeatherPane(
@@ -535,7 +533,6 @@ private fun FrameArtPane(
     onShuffle: (Boolean) -> Unit,
     nightDim: Boolean,
     onNightDim: (Boolean) -> Unit,
-    onOpenScreensaver: () -> Unit,
 ) {
     val colors = LocalLauncherColors.current
     Column(
@@ -701,16 +698,6 @@ private fun FrameArtPane(
             } else {
                 "Frame Art also starts on its own after this long with no input."
             },
-            color = colors.textDim,
-            fontSize = 13.sp,
-            modifier = Modifier.fillMaxWidth(0.85f),
-        )
-
-        SectionLabel("System screensaver")
-        ToggleChip("Set as screensaver", active = false) { onOpenScreensaver() }
-        Text(
-            "Use this same Frame Art as the TV's screensaver, so it comes on by itself when the device " +
-                "is idle. Opens the system Screensaver settings — choose Tarang there.",
             color = colors.textDim,
             fontSize = 13.sp,
             modifier = Modifier.fillMaxWidth(0.85f),

@@ -23,14 +23,8 @@ class HomeRedirectService : AccessibilityService() {
     private var lastForegroundPkg: String? = null
     private var pendingRedirect: Runnable? = null
 
-    override fun onServiceConnected() {
-        super.onServiceConnected()
-        instance = this
-    }
-
     override fun onDestroy() {
         pendingRedirect?.let { handler.removeCallbacks(it) }
-        if (instance === this) instance = null
         super.onDestroy()
     }
 
@@ -73,24 +67,6 @@ class HomeRedirectService : AccessibilityService() {
         // enough to let a transient flash (a VPN connect) pass; short enough that returning from an app
         // snaps back quickly. Tunable.
         private const val GUARD_MS = 200L
-
-        /** The live service instance while it's connected, so the launcher can drive global actions
-         *  (e.g. the "Sleep" shortcut) through it. Null when the service isn't enabled/connected. */
-        @Volatile
-        var instance: HomeRedirectService? = null
-            private set
-
-        /**
-         * Best-effort "put the TV to sleep": performs the accessibility lock-screen global action,
-         * which on most Android TV devices turns the display off. Returns false if the accessibility
-         * service isn't connected (the caller can then fall back — e.g. to Frame Art).
-         */
-        fun requestSleep(): Boolean {
-            val svc = instance ?: return false
-            return runCatching {
-                svc.performGlobalAction(AccessibilityService.GLOBAL_ACTION_LOCK_SCREEN)
-            }.getOrDefault(false)
-        }
 
         /** Stock launcher packages we bounce away from. */
         private val STOCK_LAUNCHERS = setOf(
