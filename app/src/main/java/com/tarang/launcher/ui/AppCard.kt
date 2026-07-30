@@ -74,6 +74,11 @@ fun AppCard(
 
     val elevation by animateDpAsState(
         targetValue = when {
+            // While the DEPTH launch ripple is fading this tile, cast no shadow. The ripple fades the
+            // tile via alpha on its graphicsLayer, which composites offscreen and clips the soft shadow
+            // to the tile bounds — near the end of the fade that clip shows as a hard rounded-rect edge
+            // around the shadow. A flying-out tile does not need a resting shadow anyway.
+            launchLayer != null -> 0.dp
             isMoving -> 16.dp
             focused -> 8.dp
             else -> 0.dp
