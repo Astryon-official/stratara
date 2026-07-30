@@ -47,6 +47,15 @@ private const val GLIDE_SLOWDOWN = 6.25f
 private fun glideSpring(dampingRatio: Float, stiffness: Float): AnimationSpec<Float> =
     spring(dampingRatio, stiffness / GLIDE_SLOWDOWN, visibilityThreshold = GLIDE_THRESHOLD)
 
+// BASELINE now settles its Frame Art transition on a critically damped spring (no overshoot). A spring
+// redirects mid-flight, so a quick toggle of Frame Art glides to the new target instead of restarting
+// a fixed tween — the "fluid, interruptible" feel. The launch specs stay tweens (their ease-in
+// "fly away" is intentional and one-shot). A sub-pixel threshold stops the tail snapping, since the
+// progress drives ~950px of translation.
+private const val BASE_THRESHOLD = 0.0002f
+private fun baseSpring(stiffness: Float): AnimationSpec<Float> =
+    spring(dampingRatio = 1f, stiffness = stiffness, visibilityThreshold = BASE_THRESHOLD)
+
 // ---------------------------------------------------------------------------------------------------
 // Timing — the AnimationSpecs the launcher's Animatables run on. Frame transitions are calm/slow; app
 // launches are quick. BASELINE/DEPTH use tuned tweens; GLIDE uses springs so it decelerates
@@ -55,21 +64,21 @@ private fun glideSpring(dampingRatio: Float, stiffness: Float): AnimationSpec<Fl
 
 /** Master progress spec (drives clock reveal, art crossfade + all the gating). */
 fun frameMasterSpec(style: AnimStyle): AnimationSpec<Float> = when (style) {
-    AnimStyle.BASELINE -> tween(1700, easing = StandardEase)
+    AnimStyle.BASELINE -> baseSpring(18f)
     AnimStyle.GLIDE -> glideSpring(dampingRatio = 1f, stiffness = 130f)
     AnimStyle.DEPTH -> tween(1100, easing = StandardEase)
 }
 
 /** Dock layer during a Frame Art enter/exit (the dock leads — shortest/stiffest). */
 fun frameDockSpec(style: AnimStyle): AnimationSpec<Float> = when (style) {
-    AnimStyle.BASELINE -> tween(1200, easing = StandardEase)
+    AnimStyle.BASELINE -> baseSpring(32f)
     AnimStyle.GLIDE -> glideSpring(dampingRatio = 1f, stiffness = 190f)
     AnimStyle.DEPTH -> tween(900, easing = OvershootEase)
 }
 
 /** Top bar layer during a Frame Art enter/exit (trails the dock — longest/softest). */
 fun frameTopBarSpec(style: AnimStyle): AnimationSpec<Float> = when (style) {
-    AnimStyle.BASELINE -> tween(1500, easing = StandardEase)
+    AnimStyle.BASELINE -> baseSpring(22f)
     AnimStyle.GLIDE -> glideSpring(dampingRatio = 1f, stiffness = 110f)
     AnimStyle.DEPTH -> tween(1100, easing = OvershootEase)
 }
@@ -82,7 +91,7 @@ const val DEPTH_LAUNCH_SLOWDOWN = 1f
  *  the app. Without a hold, a warm app appears within ~100ms and cuts the ripple off. Tuned a bit
  *  short of the dock ripple's 850ms: the app window takes a beat to appear anyway, so the move still
  *  plays out while the slow-app wallpaper wait stays shorter. */
-const val DEPTH_LAUNCH_HOLD_MS = 600L
+const val DEPTH_LAUNCH_HOLD_MS = 400L
 
 /** Dock layer during an app launch ([entering]) / return (!entering). */
 fun launchDockSpec(style: AnimStyle, entering: Boolean): AnimationSpec<Float> = when (style) {
