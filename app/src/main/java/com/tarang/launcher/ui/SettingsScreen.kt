@@ -93,6 +93,8 @@ import com.tarang.launcher.data.ThemeMode
 import com.tarang.launcher.data.TvArtwork
 import com.tarang.launcher.data.WeatherUnit
 import com.tarang.launcher.home.HomeSetup
+import com.tarang.launcher.viewmodel.UpdateUiState
+import java.io.File
 
 private enum class SettingsSection(val title: String) {
     APPEARANCE("Appearance"),
@@ -151,6 +153,11 @@ fun SettingsScreen(
     onOpenAccessibilitySettings: () -> Unit,
     onOpenAndroidSettings: () -> Unit,
     onChooseHomeApp: (() -> Unit)?,
+    updateState: UpdateUiState,
+    onCheckForUpdate: () -> Unit,
+    onDownloadUpdate: (String) -> Unit,
+    onInstallUpdate: (File) -> Unit,
+    onRequestInstallPermission: () -> Unit,
     onClose: () -> Unit,
 ) {
     val colors = LocalLauncherColors.current
@@ -276,6 +283,11 @@ fun SettingsScreen(
                     SettingsSection.DIAGNOSTICS -> DiagnosticsPane(
                         onScanTvContent = onScanTvContent,
                         onOpenAndroidSettings = onOpenAndroidSettings,
+                        updateState = updateState,
+                        onCheckForUpdate = onCheckForUpdate,
+                        onDownloadUpdate = onDownloadUpdate,
+                        onInstallUpdate = onInstallUpdate,
+                        onRequestInstallPermission = onRequestInstallPermission,
                     )
                 }
             }
@@ -1187,10 +1199,26 @@ private fun HiddenAppRow(label: String, onUnhide: () -> Unit) {
 }
 
 @Composable
-private fun DiagnosticsPane(onScanTvContent: () -> Unit, onOpenAndroidSettings: () -> Unit) {
+private fun DiagnosticsPane(
+    onScanTvContent: () -> Unit,
+    onOpenAndroidSettings: () -> Unit,
+    updateState: UpdateUiState,
+    onCheckForUpdate: () -> Unit,
+    onDownloadUpdate: (String) -> Unit,
+    onInstallUpdate: (File) -> Unit,
+    onRequestInstallPermission: () -> Unit,
+) {
     val colors = LocalLauncherColors.current
     Column(verticalArrangement = Arrangement.spacedBy(22.dp)) {
         PaneTitle("Diagnostics")
+
+        UpdateSection(
+            updateState = updateState,
+            onCheckForUpdate = onCheckForUpdate,
+            onDownloadUpdate = onDownloadUpdate,
+            onInstallUpdate = onInstallUpdate,
+            onRequestInstallPermission = onRequestInstallPermission,
+        )
 
         SectionLabel("System")
         ToggleChip("Open system settings", active = false) { onOpenAndroidSettings() }
@@ -1204,6 +1232,112 @@ private fun DiagnosticsPane(onScanTvContent: () -> Unit, onOpenAndroidSettings: 
             modifier = Modifier.fillMaxWidth(0.7f),
         )
         ToggleChip("Scan TV content", active = false) { onScanTvContent() }
+    }
+}
+
+/**
+ * "Check for updates": queries GitHub Releases, then walks the user through download and install.
+ * Every step is manual — no auto-download, no auto-install.
+ */
+@Composable
+private fun UpdateSection(
+    updateState: UpdateUiState,
+    onCheckForUpdate: () -> Unit,
+    onDownloadUpdate: (String) -> Unit,
+    onInstallUpdate: (File) -> Unit,
+    onRequestInstallPermission: () -> Unit,
+) {
+    val context = LocalContext.current
+    val colors = LocalLauncherColors.current
+    val currentVersion = remember {
+        runCatching {
+            context.packageManager.getPackageInfo(context.packageName, 0).versionName
+        }.getOrNull() ?: "unknown"
+    }
+
+    // Resuming from the "install unknown apps" settings screen retries the install automatically,
+    // so granting the permission there is the second of the flow's two taps, not a third. Resuming
+    // while still ReadyToInstall (the system install screen itself) means the user backed out —
+    // a successful install replaces this whole process, so it never gets a chance to resume here.
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            val state = updateState
+            if (event == Lifecycle.Event.ON_RESUME && state is UpdateUiState.NeedsInstallPermission) {
+                onInstallUpdate(state.apkFile)
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+
+    SectionLabel("Updates")
+    Text(
+        "Current version: $currentVersion",
+        color = colors.textDim,
+        fontSize = 14.sp,
+    )
+
+    when (updateState) {
+        is UpdateUiState.Idle ->
+            ToggleChip("Check for updates", active = false) { onCheckForUpdate() }
+
+        is UpdateUiState.Checking ->
+            Text("Checking…", color = colors.textDim, fontSize = 14.sp)
+
+        is UpdateUiState.UpToDate -> {
+            Text("You're on the latest version.", color = okColor(colors.isDark), fontSize = 14.sp)
+            ToggleChip("Check again", active = false) { onCheckForUpdate() }
+        }
+
+        is UpdateUiState.Available -> {
+            Text(
+                "Version ${updateState.versionTag} is available.",
+                color = colors.text,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Medium,
+            )
+            if (updateState.changelog.isNotBlank()) {
+                Text(
+                    updateState.changelog,
+                    color = colors.textDim,
+                    fontSize = 13.sp,
+                    modifier = Modifier.fillMaxWidth(0.7f),
+                )
+            }
+            ToggleChip("Download", active = false) { onDownloadUpdate(updateState.apkUrl) }
+        }
+
+        is UpdateUiState.Downloading ->
+            Text("Downloading… ${updateState.progressPercent}%", color = colors.textDim, fontSize = 14.sp)
+
+        is UpdateUiState.ReadyToInstall -> {
+            Text("Download complete.", color = okColor(colors.isDark), fontSize = 14.sp)
+            ToggleChip("Install", active = false) { onInstallUpdate(updateState.apkFile) }
+        }
+
+        is UpdateUiState.NeedsInstallPermission -> {
+            Text(
+                "Tarang needs permission to install updates.",
+                color = warningColor(colors.isDark),
+                fontSize = 14.sp,
+            )
+            ToggleChip("Grant permission", active = false) { onRequestInstallPermission() }
+        }
+
+        is UpdateUiState.SignatureMismatch -> {
+            Text(
+                "This update couldn't be verified and won't be installed.",
+                color = warningColor(colors.isDark),
+                fontSize = 14.sp,
+            )
+            ToggleChip("Check for updates again", active = false) { onCheckForUpdate() }
+        }
+
+        is UpdateUiState.Error -> {
+            Text(updateState.message, color = warningColor(colors.isDark), fontSize = 14.sp)
+            ToggleChip("Retry", active = false) { onCheckForUpdate() }
+        }
     }
 }
 

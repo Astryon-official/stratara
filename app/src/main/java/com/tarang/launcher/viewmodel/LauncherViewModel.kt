@@ -1,17 +1,23 @@
 package com.tarang.launcher.viewmodel
 
+import android.app.DownloadManager
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import com.tarang.launcher.data.ApkDownloader
 import com.tarang.launcher.data.AppInfo
 import com.tarang.launcher.data.AppListCache
 import com.tarang.launcher.data.AppRepository
 import com.tarang.launcher.data.FavoritesStore
 import com.tarang.launcher.data.IconLoader
+import com.tarang.launcher.data.InstallResult
 import com.tarang.launcher.data.LauncherSettings
 import com.tarang.launcher.data.SettingsStore
+import com.tarang.launcher.data.UpdateChecker
+import com.tarang.launcher.data.UpdateInstaller
+import com.tarang.launcher.data.UpdateResult
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.Job
@@ -24,6 +30,7 @@ import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import java.io.File
 
 data class LauncherUiState(
     val isLoading: Boolean = true,
@@ -32,6 +39,19 @@ data class LauncherUiState(
     val allApps: List<AppInfo> = emptyList(),
 )
 
+/** State for the "Check for updates" flow in Settings > Diagnostics. */
+sealed class UpdateUiState {
+    data object Idle : UpdateUiState()
+    data object Checking : UpdateUiState()
+    data object UpToDate : UpdateUiState()
+    data class Available(val versionTag: String, val changelog: String, val apkUrl: String) : UpdateUiState()
+    data class Downloading(val progressPercent: Int) : UpdateUiState()
+    data class ReadyToInstall(val apkFile: File) : UpdateUiState()
+    data class NeedsInstallPermission(val apkFile: File) : UpdateUiState()
+    data object SignatureMismatch : UpdateUiState()
+    data class Error(val message: String) : UpdateUiState()
+}
+
 @OptIn(FlowPreview::class)
 class LauncherViewModel(
     private val repository: AppRepository,
@@ -39,11 +59,17 @@ class LauncherViewModel(
     private val settingsStore: SettingsStore,
     private val appListCache: AppListCache,
     private val iconLoader: IconLoader,
+    private val updateChecker: UpdateChecker,
+    private val apkDownloader: ApkDownloader,
+    private val updateInstaller: UpdateInstaller,
 ) : ViewModel() {
 
     private val apps = MutableStateFlow<List<AppInfo>>(emptyList())
     private val loading = MutableStateFlow(true)
     private val _focusedPackage = MutableStateFlow<String?>(null)
+    private val _updateState = MutableStateFlow<UpdateUiState>(UpdateUiState.Idle)
+    val updateState: StateFlow<UpdateUiState> = _updateState
+    private var downloadPollJob: Job? = null
 
     /** The currently focused app package — drives the ambient wallpaper glow. Kept OUT of [uiState]
      *  so moving focus doesn't recompute the dock/grid lists (and recompose the grid) on every press. */
@@ -178,6 +204,51 @@ class LauncherViewModel(
     fun setNowPlaying(value: Boolean) = viewModelScope.launch { settingsStore.setNowPlaying(value) }.let {}
     fun setNavSounds(value: Boolean) = viewModelScope.launch { settingsStore.setNavSounds(value) }.let {}
 
+    fun checkForUpdate() {
+        _updateState.value = UpdateUiState.Checking
+        viewModelScope.launch {
+            _updateState.value = when (val result = updateChecker.checkForUpdate(System.currentTimeMillis())) {
+                is UpdateResult.UpToDate -> UpdateUiState.UpToDate
+                is UpdateResult.UpdateAvailable ->
+                    UpdateUiState.Available(result.versionTag, result.changelog, result.apkUrl)
+                is UpdateResult.Error -> UpdateUiState.Error(result.reason)
+            }
+        }
+    }
+
+    fun downloadUpdate(apkUrl: String) {
+        val downloadId = apkDownloader.startDownload(apkUrl)
+        _updateState.value = UpdateUiState.Downloading(0)
+        downloadPollJob?.cancel()
+        downloadPollJob = viewModelScope.launch {
+            while (true) {
+                val status = apkDownloader.queryStatus(downloadId)
+                if (status == DownloadManager.STATUS_SUCCESSFUL) {
+                    _updateState.value = UpdateUiState.ReadyToInstall(apkDownloader.downloadedFile())
+                    break
+                }
+                if (status == DownloadManager.STATUS_FAILED) {
+                    _updateState.value = UpdateUiState.Error("The download failed.")
+                    break
+                }
+                val (downloaded, total) = apkDownloader.queryProgress(downloadId)
+                val percent = if (total > 0) (downloaded * 100 / total) else 0
+                _updateState.value = UpdateUiState.Downloading(percent)
+                delay(DOWNLOAD_POLL_INTERVAL_MS)
+            }
+        }
+    }
+
+    fun installUpdate(apkFile: File) {
+        _updateState.value = when (updateInstaller.install(apkFile)) {
+            InstallResult.Started -> UpdateUiState.ReadyToInstall(apkFile)
+            InstallResult.NeedsInstallPermission -> UpdateUiState.NeedsInstallPermission(apkFile)
+            InstallResult.SignatureMismatch -> UpdateUiState.SignatureMismatch
+        }
+    }
+
+    fun requestInstallPermission() = updateInstaller.requestInstallPermission()
+
     companion object {
         private const val DEFAULT_DOCK_COUNT = 5
 
@@ -188,14 +259,25 @@ class LauncherViewModel(
         /** How long after a scan the tile prefetch starts (lets the visible tiles load first). */
         private const val PREFETCH_DELAY_MS = 3_000L
 
+        /** How often the download-progress poll loop re-reads DownloadManager's cursor. */
+        private const val DOWNLOAD_POLL_INTERVAL_MS = 500L
+
         fun provideFactory(
             repository: AppRepository,
             favoritesStore: FavoritesStore,
             settingsStore: SettingsStore,
             appListCache: AppListCache,
             iconLoader: IconLoader,
+            updateChecker: UpdateChecker,
+            apkDownloader: ApkDownloader,
+            updateInstaller: UpdateInstaller,
         ): ViewModelProvider.Factory = viewModelFactory {
-            initializer { LauncherViewModel(repository, favoritesStore, settingsStore, appListCache, iconLoader) }
+            initializer {
+                LauncherViewModel(
+                    repository, favoritesStore, settingsStore, appListCache, iconLoader,
+                    updateChecker, apkDownloader, updateInstaller,
+                )
+            }
         }
     }
 }

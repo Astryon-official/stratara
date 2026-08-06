@@ -113,9 +113,13 @@ fun LauncherScreen(
             container.settingsStore,
             container.appListCache,
             container.iconLoader,
+            container.updateChecker,
+            container.apkDownloader,
+            container.updateInstaller,
         ),
     )
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val updateState by viewModel.updateState.collectAsStateWithLifecycle()
     val settingsOrNull by viewModel.settings.collectAsStateWithLifecycle()
     // Hold the (black) first frame until the real settings land — a few ms — rather than render
     // default settings (wrong wallpaper/theme) and visibly swap. Never null again after that.
@@ -588,6 +592,11 @@ fun LauncherScreen(
                     onOpenAccessibilitySettings = { HomeSetup.openAccessibilitySettings(context) },
                     onOpenAndroidSettings = { openAndroidSettings(context) },
                     onChooseHomeApp = chooseHomeApp,
+                    updateState = updateState,
+                    onCheckForUpdate = viewModel::checkForUpdate,
+                    onDownloadUpdate = viewModel::downloadUpdate,
+                    onInstallUpdate = viewModel::installUpdate,
+                    onRequestInstallPermission = viewModel::requestInstallPermission,
                     onClose = { sounds.back(); showSettings = false },
                 )
             } else {
