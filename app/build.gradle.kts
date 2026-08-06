@@ -1,8 +1,20 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.baselineprofile)
+}
+
+// Self-update (see UpdateInstaller) checks that a downloaded APK is signed with the same
+// certificate as the installed app. That only holds across releases if every release uses the
+// same stable key, so release builds sign with a dedicated keystore instead of the ephemeral
+// per-machine debug key. Reads from keystore.properties, which is never committed (see
+// .gitignore) — see README-signing.md for how to generate that keystore and file.
+val keystoreProperties = Properties().apply {
+    val propertiesFile = rootProject.file("keystore.properties")
+    if (propertiesFile.exists()) propertiesFile.inputStream().use { load(it) }
 }
 
 android {
@@ -17,12 +29,27 @@ android {
         versionName = "0.3.6"
     }
 
+    signingConfigs {
+        if (keystoreProperties.containsKey("storeFile")) {
+            create("release") {
+                storeFile = rootProject.file(keystoreProperties.getProperty("storeFile"))
+                storePassword = keystoreProperties.getProperty("storePassword")
+                keyAlias = keystoreProperties.getProperty("keyAlias")
+                keyPassword = keystoreProperties.getProperty("keyPassword")
+            }
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
-            // Sign release with the debug key so it can be sideloaded directly (this is a personal
-            // launcher, not a Play Store app). A release build is far faster than debug on-device.
-            signingConfig = signingConfigs.getByName("debug")
+            // Falls back to the debug key when keystore.properties is absent (e.g. a fresh
+            // checkout before the release keystore is set up), so the project still builds.
+            signingConfig = if (keystoreProperties.containsKey("storeFile")) {
+                signingConfigs.getByName("release")
+            } else {
+                signingConfigs.getByName("debug")
+            }
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
