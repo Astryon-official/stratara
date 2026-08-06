@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Grants the system installer read access to the downloaded update APK in the app cache. -->
+<paths>
+    <cache-path name="apk_updates" path="." />
+</paths>
