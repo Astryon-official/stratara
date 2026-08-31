@@ -39,7 +39,7 @@ data class LauncherUiState(
     val allApps: List<AppInfo> = emptyList(),
 )
 
-/** State for the "Check for updates" flow in Settings > Diagnostics. */
+/** State for the "Check for updates" flow in Settings > Updates. */
 sealed class UpdateUiState {
     data object Idle : UpdateUiState()
     data object Checking : UpdateUiState()
@@ -204,10 +204,16 @@ class LauncherViewModel(
     fun setNowPlaying(value: Boolean) = viewModelScope.launch { settingsStore.setNowPlaying(value) }.let {}
     fun setNavSounds(value: Boolean) = viewModelScope.launch { settingsStore.setNavSounds(value) }.let {}
 
-    fun checkForUpdate() {
+    /**
+     * @param force skip the check cooldown — used by Retry so a failed update flow can continue
+     *   without waiting five minutes after a successful "is there an update?" probe.
+     */
+    fun checkForUpdate(force: Boolean = false) {
         _updateState.value = UpdateUiState.Checking
         viewModelScope.launch {
-            _updateState.value = when (val result = updateChecker.checkForUpdate(System.currentTimeMillis())) {
+            _updateState.value = when (
+                val result = updateChecker.checkForUpdate(System.currentTimeMillis(), force = force)
+            ) {
                 is UpdateResult.UpToDate -> UpdateUiState.UpToDate
                 is UpdateResult.UpdateAvailable ->
                     UpdateUiState.Available(result.versionTag, result.changelog, result.apkUrl)
@@ -217,7 +223,17 @@ class LauncherViewModel(
     }
 
     fun downloadUpdate(apkUrl: String) {
-        val downloadId = apkDownloader.startDownload(apkUrl)
+        val downloadId = try {
+            apkDownloader.startDownload(apkUrl)
+        } catch (e: SecurityException) {
+            _updateState.value = UpdateUiState.Error(
+                "The download could not start (${e.message ?: "security error"}).",
+            )
+            return
+        } catch (e: Exception) {
+            _updateState.value = UpdateUiState.Error(e.message ?: "The download could not start.")
+            return
+        }
         _updateState.value = UpdateUiState.Downloading(0)
         downloadPollJob?.cancel()
         downloadPollJob = viewModelScope.launch {

@@ -8,6 +8,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.focusGroup
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -39,6 +40,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
@@ -49,6 +51,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import kotlinx.coroutines.yield
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
@@ -64,6 +67,7 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -102,6 +106,7 @@ private enum class SettingsSection(val title: String) {
     WEATHER("Weather"),
     HOME_SETUP("Home setup"),
     HIDDEN_APPS("Hidden apps"),
+    UPDATES("Updates"),
     DIAGNOSTICS("Diagnostics"),
 }
 
@@ -154,7 +159,7 @@ fun SettingsScreen(
     onOpenAndroidSettings: () -> Unit,
     onChooseHomeApp: (() -> Unit)?,
     updateState: UpdateUiState,
-    onCheckForUpdate: () -> Unit,
+    onCheckForUpdate: (force: Boolean) -> Unit,
     onDownloadUpdate: (String) -> Unit,
     onInstallUpdate: (File) -> Unit,
     onRequestInstallPermission: () -> Unit,
@@ -162,6 +167,9 @@ fun SettingsScreen(
 ) {
     val colors = LocalLauncherColors.current
     var section by remember { mutableStateOf(SettingsSection.APPEARANCE) }
+    // Hold Updates through Checking/Downloading and a short settle after, so a focus blip
+    // onto Appearance cannot dispose the result pane before the next action chip focuses.
+    var holdUpdatesSection by remember { mutableStateOf(false) }
     val firstSection = remember { FocusRequester() }
 
     BackHandler { onClose() }
@@ -184,7 +192,13 @@ fun SettingsScreen(
                     SectionNavRow(
                         title = s.title,
                         active = section == s,
-                        onFocused = { section = s },
+                        onFocused = {
+                            // Checking/Downloading (and the brief settle after) can drop focus
+                            // onto Appearance. Ignore those blips so Updates stays mounted.
+                            if (!holdUpdatesSection || s == SettingsSection.UPDATES) {
+                                section = s
+                            }
+                        },
                         modifier = if (i == 0) Modifier.focusRequester(firstSection) else Modifier,
                     )
                     Spacer(Modifier.height(6.dp))
@@ -280,14 +294,17 @@ fun SettingsScreen(
                         onUnhide = onUnhideApp,
                     )
 
-                    SettingsSection.DIAGNOSTICS -> DiagnosticsPane(
-                        onScanTvContent = onScanTvContent,
-                        onOpenAndroidSettings = onOpenAndroidSettings,
+                    SettingsSection.UPDATES -> UpdatesPane(
                         updateState = updateState,
                         onCheckForUpdate = onCheckForUpdate,
                         onDownloadUpdate = onDownloadUpdate,
                         onInstallUpdate = onInstallUpdate,
                         onRequestInstallPermission = onRequestInstallPermission,
+                    )
+
+                    SettingsSection.DIAGNOSTICS -> DiagnosticsPane(
+                        onScanTvContent = onScanTvContent,
+                        onOpenAndroidSettings = onOpenAndroidSettings,
                     )
                 }
             }
@@ -295,7 +312,25 @@ fun SettingsScreen(
     }
 
     LaunchedEffect(Unit) { runCatching { firstSection.requestFocus() } }
+
+    // Hold Updates while Checking/Downloading, then briefly after the result arrives so the
+    // next action chip can reclaim focus before the nav rail can steal the section.
+    LaunchedEffect(updateState) {
+        if (updateState.isTransientUpdateFlow()) {
+            holdUpdatesSection = true
+            section = SettingsSection.UPDATES
+        } else if (holdUpdatesSection) {
+            section = SettingsSection.UPDATES
+            delay(300)
+            holdUpdatesSection = false
+        }
+    }
 }
+
+/** True while an update step replaces the focused chip and can steal focus to the nav rail. */
+private fun UpdateUiState.isTransientUpdateFlow(): Boolean =
+    this is UpdateUiState.Checking || this is UpdateUiState.Downloading
+
 
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
@@ -1202,23 +1237,10 @@ private fun HiddenAppRow(label: String, onUnhide: () -> Unit) {
 private fun DiagnosticsPane(
     onScanTvContent: () -> Unit,
     onOpenAndroidSettings: () -> Unit,
-    updateState: UpdateUiState,
-    onCheckForUpdate: () -> Unit,
-    onDownloadUpdate: (String) -> Unit,
-    onInstallUpdate: (File) -> Unit,
-    onRequestInstallPermission: () -> Unit,
 ) {
     val colors = LocalLauncherColors.current
     Column(verticalArrangement = Arrangement.spacedBy(22.dp)) {
         PaneTitle("Diagnostics")
-
-        UpdateSection(
-            updateState = updateState,
-            onCheckForUpdate = onCheckForUpdate,
-            onDownloadUpdate = onDownloadUpdate,
-            onInstallUpdate = onInstallUpdate,
-            onRequestInstallPermission = onRequestInstallPermission,
-        )
 
         SectionLabel("System")
         ToggleChip("Open system settings", active = false) { onOpenAndroidSettings() }
@@ -1240,9 +1262,9 @@ private fun DiagnosticsPane(
  * Every step is manual — no auto-download, no auto-install.
  */
 @Composable
-private fun UpdateSection(
+private fun UpdatesPane(
     updateState: UpdateUiState,
-    onCheckForUpdate: () -> Unit,
+    onCheckForUpdate: (force: Boolean) -> Unit,
     onDownloadUpdate: (String) -> Unit,
     onInstallUpdate: (File) -> Unit,
     onRequestInstallPermission: () -> Unit,
@@ -1255,88 +1277,127 @@ private fun UpdateSection(
         }.getOrNull() ?: "unknown"
     }
 
+    // Keep focus inside Updates when the focused chip is replaced (Idle→Checking,
+    // Available→Downloading, …). Otherwise focus falls to the left rail and selects Appearance.
+    val actionFocus = remember { FocusRequester() }
+    val stateKey = updateState::class
+    LaunchedEffect(stateKey) {
+        yield()
+        runCatching { actionFocus.requestFocus() }
+    }
+
     // Resuming from the "install unknown apps" settings screen retries the install automatically,
     // so granting the permission there is the second of the flow's two taps, not a third. Resuming
     // while still ReadyToInstall (the system install screen itself) means the user backed out —
     // a successful install replaces this whole process, so it never gets a chance to resume here.
     val lifecycleOwner = LocalLifecycleOwner.current
+    val latestState by rememberUpdatedState(updateState)
+    val latestInstall by rememberUpdatedState(onInstallUpdate)
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
-            val state = updateState
+            val state = latestState
             if (event == Lifecycle.Event.ON_RESUME && state is UpdateUiState.NeedsInstallPermission) {
-                onInstallUpdate(state.apkFile)
+                latestInstall(state.apkFile)
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
-    SectionLabel("Updates")
-    Text(
-        "Current version: $currentVersion",
-        color = colors.textDim,
-        fontSize = 14.sp,
-    )
+    Column(verticalArrangement = Arrangement.spacedBy(22.dp)) {
+        PaneTitle("Updates")
+        Text(
+            "Current version: $currentVersion",
+            color = colors.textDim,
+            fontSize = 14.sp,
+        )
 
-    when (updateState) {
-        is UpdateUiState.Idle ->
-            ToggleChip("Check for updates", active = false) { onCheckForUpdate() }
+        when (updateState) {
+            is UpdateUiState.Idle ->
+                ToggleChip("Check for updates", active = false, modifier = Modifier.focusRequester(actionFocus)) {
+                    onCheckForUpdate(false)
+                }
 
-        is UpdateUiState.Checking ->
-            Text("Checking…", color = colors.textDim, fontSize = 14.sp)
-
-        is UpdateUiState.UpToDate -> {
-            Text("You're on the latest version.", color = okColor(colors.isDark), fontSize = 14.sp)
-            ToggleChip("Check again", active = false) { onCheckForUpdate() }
-        }
-
-        is UpdateUiState.Available -> {
-            Text(
-                "Version ${updateState.versionTag} is available.",
-                color = colors.text,
-                fontSize = 15.sp,
-                fontWeight = FontWeight.Medium,
-            )
-            if (updateState.changelog.isNotBlank()) {
+            is UpdateUiState.Checking ->
                 Text(
-                    updateState.changelog,
+                    "Checking…",
                     color = colors.textDim,
-                    fontSize = 13.sp,
-                    modifier = Modifier.fillMaxWidth(0.7f),
+                    fontSize = 14.sp,
+                    modifier = Modifier.focusRequester(actionFocus).focusable(),
                 )
+
+            is UpdateUiState.UpToDate -> {
+                Text("You're on the latest version.", color = okColor(colors.isDark), fontSize = 14.sp)
+                ToggleChip("Check again", active = false, modifier = Modifier.focusRequester(actionFocus)) {
+                    onCheckForUpdate(false)
+                }
             }
-            ToggleChip("Download", active = false) { onDownloadUpdate(updateState.apkUrl) }
-        }
 
-        is UpdateUiState.Downloading ->
-            Text("Downloading… ${updateState.progressPercent}%", color = colors.textDim, fontSize = 14.sp)
+            is UpdateUiState.Available -> {
+                Text(
+                    "Version ${updateState.versionTag} is available.",
+                    color = colors.text,
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Medium,
+                )
+                if (updateState.changelog.isNotBlank()) {
+                    Text(
+                        updateState.changelog,
+                        color = colors.textDim,
+                        fontSize = 13.sp,
+                        maxLines = 4,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.fillMaxWidth(0.7f),
+                    )
+                }
+                ToggleChip("Download", active = false, modifier = Modifier.focusRequester(actionFocus)) {
+                    onDownloadUpdate(updateState.apkUrl)
+                }
+            }
 
-        is UpdateUiState.ReadyToInstall -> {
-            Text("Download complete.", color = okColor(colors.isDark), fontSize = 14.sp)
-            ToggleChip("Install", active = false) { onInstallUpdate(updateState.apkFile) }
-        }
+            is UpdateUiState.Downloading ->
+                Text(
+                    "Downloading… ${updateState.progressPercent}%",
+                    color = colors.textDim,
+                    fontSize = 14.sp,
+                    modifier = Modifier.focusRequester(actionFocus).focusable(),
+                )
 
-        is UpdateUiState.NeedsInstallPermission -> {
-            Text(
-                "Tarang needs permission to install updates.",
-                color = warningColor(colors.isDark),
-                fontSize = 14.sp,
-            )
-            ToggleChip("Grant permission", active = false) { onRequestInstallPermission() }
-        }
+            is UpdateUiState.ReadyToInstall -> {
+                Text("Download complete.", color = okColor(colors.isDark), fontSize = 14.sp)
+                ToggleChip("Install", active = false, modifier = Modifier.focusRequester(actionFocus)) {
+                    onInstallUpdate(updateState.apkFile)
+                }
+            }
 
-        is UpdateUiState.SignatureMismatch -> {
-            Text(
-                "This update couldn't be verified and won't be installed.",
-                color = warningColor(colors.isDark),
-                fontSize = 14.sp,
-            )
-            ToggleChip("Check for updates again", active = false) { onCheckForUpdate() }
-        }
+            is UpdateUiState.NeedsInstallPermission -> {
+                Text(
+                    "Tarang needs permission to install updates.",
+                    color = warningColor(colors.isDark),
+                    fontSize = 14.sp,
+                )
+                ToggleChip("Grant permission", active = false, modifier = Modifier.focusRequester(actionFocus)) {
+                    onRequestInstallPermission()
+                }
+            }
 
-        is UpdateUiState.Error -> {
-            Text(updateState.message, color = warningColor(colors.isDark), fontSize = 14.sp)
-            ToggleChip("Retry", active = false) { onCheckForUpdate() }
+            is UpdateUiState.SignatureMismatch -> {
+                Text(
+                    "This update couldn't be verified and won't be installed.",
+                    color = warningColor(colors.isDark),
+                    fontSize = 14.sp,
+                )
+                ToggleChip("Check for updates again", active = false, modifier = Modifier.focusRequester(actionFocus)) {
+                    onCheckForUpdate(true)
+                }
+            }
+
+            is UpdateUiState.Error -> {
+                Text(updateState.message, color = warningColor(colors.isDark), fontSize = 14.sp)
+                ToggleChip("Retry", active = false, modifier = Modifier.focusRequester(actionFocus)) {
+                    onCheckForUpdate(true)
+                }
+            }
         }
     }
 }
@@ -1443,7 +1504,12 @@ private fun BoxScope.SelectedBadge() {
 
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
-private fun ToggleChip(label: String, active: Boolean, onClick: () -> Unit) {
+private fun ToggleChip(
+    label: String,
+    active: Boolean,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit,
+) {
     val colors = LocalLauncherColors.current
     var focused by remember { mutableStateOf(false) }
     val shape = RoundedCornerShape(percent = 50)
@@ -1453,7 +1519,7 @@ private fun ToggleChip(label: String, active: Boolean, onClick: () -> Unit) {
     val selectedOutline = if (active && !focused) Modifier.border(2.dp, colors.highlight, shape) else Modifier
     Surface(
         onClick = onClick,
-        modifier = Modifier.onFocusChanged { focused = it.isFocused }.then(selectedOutline),
+        modifier = modifier.onFocusChanged { focused = it.isFocused }.then(selectedOutline),
         shape = ClickableSurfaceDefaults.shape(shape),
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1.06f),
         colors = ClickableSurfaceDefaults.colors(

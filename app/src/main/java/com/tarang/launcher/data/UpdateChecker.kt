@@ -22,9 +22,14 @@ sealed class UpdateResult {
 /** Checks GitHub Releases for a newer Tarang build than the one currently installed. */
 class UpdateChecker(private val context: Context, private val updateStore: UpdateStore) {
 
-    suspend fun checkForUpdate(nowMillis: Long): UpdateResult = withContext(Dispatchers.IO) {
+    /**
+     * @param force when true (Retry after an error), skip the cooldown so a failed flow can
+     *   continue without waiting out [MIN_CHECK_INTERVAL_MILLIS].
+     */
+    suspend fun checkForUpdate(nowMillis: Long, force: Boolean = false): UpdateResult =
+        withContext(Dispatchers.IO) {
         val lastChecked = updateStore.lastCheckedAtMillis.first()
-        if (nowMillis - lastChecked < MIN_CHECK_INTERVAL_MILLIS) {
+        if (!force && nowMillis - lastChecked < MIN_CHECK_INTERVAL_MILLIS) {
             return@withContext UpdateResult.Error("Checked recently. Try again later.")
         }
         try {

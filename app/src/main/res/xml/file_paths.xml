@@ -1,5 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Grants the system installer read access to the downloaded update APK in the app cache. -->
+<!-- Grants the system installer read access to the downloaded update APK. -->
 <paths>
+    <!-- Legacy location (private cache). Kept so older in-progress downloads still install. -->
     <cache-path name="apk_updates" path="." />
+    <!-- DownloadManager writes here — it cannot write to private cache via file://. -->
+    <external-files-path name="apk_updates_ext" path="Download/" />
 </paths>

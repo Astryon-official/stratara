@@ -593,7 +593,7 @@ fun LauncherScreen(
                     onOpenAndroidSettings = { openAndroidSettings(context) },
                     onChooseHomeApp = chooseHomeApp,
                     updateState = updateState,
-                    onCheckForUpdate = viewModel::checkForUpdate,
+                    onCheckForUpdate = { force -> viewModel.checkForUpdate(force) },
                     onDownloadUpdate = viewModel::downloadUpdate,
                     onInstallUpdate = viewModel::installUpdate,
                     onRequestInstallPermission = viewModel::requestInstallPermission,

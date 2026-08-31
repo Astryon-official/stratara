@@ -2,27 +2,38 @@ package com.tarang.launcher.data
 
 import android.app.DownloadManager
 import android.content.Context
-import android.net.Uri
-import androidx.core.net.toUri
+import android.os.Environment
 import java.io.File
 
-/** Downloads an update APK into the app cache using the system [DownloadManager]. */
+/**
+ * Downloads an update APK using the system [DownloadManager].
+ *
+ * The file goes under the app's external files dir (not private cache). DownloadManager runs in a
+ * separate process and cannot write to the app's private cache via a `file://` URI — that throws
+ * [SecurityException].
+ */
 class ApkDownloader(private val context: Context) {
 
     /** Starts the download, replacing any previous one, and returns the download's id. */
     fun startDownload(apkUrl: String): Long {
-        val destFile = downloadedFile()
-        destFile.delete()
+        downloadedFile().delete()
 
-        val request = DownloadManager.Request(apkUrl.toUri())
-            .setDestinationUri(Uri.fromFile(destFile))
-            .setNotificationVisibility(DownloadManager.Request.VISIBILITY_HIDDEN)
+        val request = DownloadManager.Request(android.net.Uri.parse(apkUrl))
+            .setTitle("Tarang update")
+            .setDescription("Downloading update")
+            .setDestinationInExternalFilesDir(
+                context,
+                Environment.DIRECTORY_DOWNLOADS,
+                APK_FILE_NAME,
+            )
+            .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
 
         val manager = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
         return manager.enqueue(request)
     }
 
-    fun downloadedFile(): File = File(context.cacheDir, "update.apk")
+    fun downloadedFile(): File =
+        File(context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), APK_FILE_NAME)
 
     /** Returns (bytesDownloaded, totalBytes), or (0, 0) if the download can't be found. */
     fun queryProgress(downloadId: Long): Pair<Int, Int> {
@@ -30,8 +41,12 @@ class ApkDownloader(private val context: Context) {
         val query = DownloadManager.Query().setFilterById(downloadId)
         manager.query(query).use { cursor ->
             if (cursor.moveToFirst()) {
-                val downloaded = cursor.getInt(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR))
-                val total = cursor.getInt(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_TOTAL_SIZE_BYTES))
+                val downloaded = cursor.getInt(
+                    cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR),
+                )
+                val total = cursor.getInt(
+                    cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_TOTAL_SIZE_BYTES),
+                )
                 return downloaded to total
             }
         }
@@ -49,5 +64,9 @@ class ApkDownloader(private val context: Context) {
             }
         }
         return DownloadManager.STATUS_FAILED
+    }
+
+    private companion object {
+        const val APK_FILE_NAME = "update.apk"
     }
 }
