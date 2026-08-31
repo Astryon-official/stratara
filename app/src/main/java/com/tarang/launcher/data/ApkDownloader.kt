@@ -15,7 +15,11 @@ import java.io.File
 class ApkDownloader(private val context: Context) {
 
     /** Starts the download, replacing any previous one, and returns the download's id. */
-    fun startDownload(apkUrl: String): Long {
+    fun startDownload(apkUrl: String, previousDownloadId: Long? = null): Long {
+        val manager = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
+        if (previousDownloadId != null && previousDownloadId != 0L) {
+            runCatching { manager.remove(previousDownloadId) }
+        }
         downloadedFile().delete()
 
         val request = DownloadManager.Request(android.net.Uri.parse(apkUrl))
@@ -28,7 +32,6 @@ class ApkDownloader(private val context: Context) {
             )
             .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
 
-        val manager = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
         return manager.enqueue(request)
     }
 

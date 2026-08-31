@@ -12,6 +12,7 @@ sealed class InstallResult {
     data object Started : InstallResult()
     data object NeedsInstallPermission : InstallResult()
     data object SignatureMismatch : InstallResult()
+    data object CouldNotStart : InstallResult()
 }
 
 /** Verifies and launches the system installer for a downloaded update APK. */
@@ -42,9 +43,13 @@ class UpdateInstaller(private val context: Context) {
             setDataAndType(uri, "application/vnd.android.package-archive")
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
-        runCatching { context.startActivity(intent) }
-            .onFailure { Log.w(TAG, "Could not start the install screen", it) }
-        return InstallResult.Started
+        return runCatching {
+            context.startActivity(intent)
+            InstallResult.Started
+        }.getOrElse {
+            Log.w(TAG, "Could not start the install screen", it)
+            InstallResult.CouldNotStart
+        }
     }
 
     private companion object {

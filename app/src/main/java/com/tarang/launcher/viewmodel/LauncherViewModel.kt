@@ -76,6 +76,7 @@ class LauncherViewModel(
     /** Quiet home banner: a newer release exists and the user has not dismissed this tag. */
     val updateNoticeVisible: StateFlow<Boolean> = _updateNoticeVisible.asStateFlow()
     private var downloadPollJob: Job? = null
+    private var activeDownloadId: Long? = null
 
     /** The currently focused app package — drives the ambient wallpaper glow. Kept OUT of [uiState]
      *  so moving focus doesn't recompute the dock/grid lists (and recompose the grid) on every press. */
@@ -245,7 +246,14 @@ class LauncherViewModel(
 
         val dismissed = updateStore.dismissedNoticeTag.first()
         val pending = updateStore.pendingUpdate.first()
-        if (pending != null && pending.versionTag != dismissed) {
+        // Drop a stale pending release after the user already installed that (or a newer) build.
+        if (pending != null && !updateChecker.isNewerThanInstalled(pending.versionTag)) {
+            updateStore.clearPendingUpdate()
+            _updateNoticeVisible.value = false
+            if (_updateState.value is UpdateUiState.Available) {
+                _updateState.value = UpdateUiState.Idle
+            }
+        } else if (pending != null && pending.versionTag != dismissed) {
             _updateState.value = UpdateUiState.Available(
                 pending.versionTag,
                 pending.changelog,
@@ -276,7 +284,7 @@ class LauncherViewModel(
                 }
             }
             is UpdateResult.Error -> {
-                // Cooldown or network failure: keep any restored pending notice.
+                // Network failure: keep any restored pending notice.
             }
         }
     }
@@ -293,7 +301,7 @@ class LauncherViewModel(
 
     fun downloadUpdate(apkUrl: String) {
         val downloadId = try {
-            apkDownloader.startDownload(apkUrl)
+            apkDownloader.startDownload(apkUrl, previousDownloadId = activeDownloadId)
         } catch (e: SecurityException) {
             _updateState.value = UpdateUiState.Error(
                 "The download could not start (${e.message ?: "security error"}).",
@@ -303,6 +311,7 @@ class LauncherViewModel(
             _updateState.value = UpdateUiState.Error(e.message ?: "The download could not start.")
             return
         }
+        activeDownloadId = downloadId
         _updateState.value = UpdateUiState.Downloading(0)
         downloadPollJob?.cancel()
         downloadPollJob = viewModelScope.launch {
@@ -329,6 +338,7 @@ class LauncherViewModel(
             InstallResult.Started -> UpdateUiState.ReadyToInstall(apkFile)
             InstallResult.NeedsInstallPermission -> UpdateUiState.NeedsInstallPermission(apkFile)
             InstallResult.SignatureMismatch -> UpdateUiState.SignatureMismatch
+            InstallResult.CouldNotStart -> UpdateUiState.Error("The install screen could not open.")
         }
     }
 

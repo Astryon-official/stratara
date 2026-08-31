@@ -28,39 +28,52 @@ class UpdateChecker(private val context: Context, private val updateStore: Updat
      */
     suspend fun checkForUpdate(nowMillis: Long, force: Boolean = false): UpdateResult =
         withContext(Dispatchers.IO) {
-        val lastChecked = updateStore.lastCheckedAtMillis.first()
-        if (!force && nowMillis - lastChecked < MIN_CHECK_INTERVAL_MILLIS) {
-            return@withContext UpdateResult.Error("Checked recently. Try again later.")
-        }
-        try {
-            val json = fetchLatestRelease()
-            updateStore.markCheckedNow(nowMillis)
-
-            val tag = json.getString("tag_name")
-            val changelog = json.optString("body", "")
-
-            val assets = json.getJSONArray("assets")
-            val apkAsset = (0 until assets.length())
-                .map { assets.getJSONObject(it) }
-                .firstOrNull { it.getString("name").endsWith(".apk") }
-                ?: return@withContext UpdateResult.Error("The latest release has no APK file.")
-            val apkUrl = apkAsset.getString("browser_download_url")
-            if (!isTrustedApkHost(apkUrl)) {
-                return@withContext UpdateResult.Error("The release asset came from an unexpected host.")
+            val lastChecked = updateStore.lastCheckedAtMillis.first()
+            if (!force && nowMillis - lastChecked < MIN_CHECK_INTERVAL_MILLIS) {
+                // Prefer a stored pending release over a dead-end "checked recently" error so a
+                // silent launch probe does not block Settings > Check for five minutes.
+                val pending = updateStore.pendingUpdate.first()
+                return@withContext if (pending != null) {
+                    UpdateResult.UpdateAvailable(pending.versionTag, pending.changelog, pending.apkUrl)
+                } else {
+                    UpdateResult.UpToDate
+                }
             }
+            try {
+                val json = fetchLatestRelease()
+                updateStore.markCheckedNow(nowMillis)
 
-            val currentVersion = context.packageManager
-                .getPackageInfo(context.packageName, 0).versionName ?: "0"
+                val tag = json.getString("tag_name")
+                val changelog = json.optString("body", "")
 
-            if (isNewer(tag, currentVersion)) {
-                UpdateResult.UpdateAvailable(tag, changelog, apkUrl)
-            } else {
-                UpdateResult.UpToDate
+                val assets = json.getJSONArray("assets")
+                val apkAsset = (0 until assets.length())
+                    .map { assets.getJSONObject(it) }
+                    .firstOrNull { it.getString("name").endsWith(".apk") }
+                    ?: return@withContext UpdateResult.Error("The latest release has no APK file.")
+                val apkUrl = apkAsset.getString("browser_download_url")
+                if (!isTrustedApkHost(apkUrl)) {
+                    return@withContext UpdateResult.Error("The release asset came from an unexpected host.")
+                }
+
+                val currentVersion = installedVersionName()
+
+                if (isNewer(tag, currentVersion)) {
+                    UpdateResult.UpdateAvailable(tag, changelog, apkUrl)
+                } else {
+                    UpdateResult.UpToDate
+                }
+            } catch (e: Exception) {
+                UpdateResult.Error(e.message ?: "The update check failed.")
             }
-        } catch (e: Exception) {
-            UpdateResult.Error(e.message ?: "The update check failed.")
         }
-    }
+
+    /** True when [versionTag] is newer than the installed app version. */
+    fun isNewerThanInstalled(versionTag: String): Boolean =
+        isNewer(versionTag, installedVersionName())
+
+    private fun installedVersionName(): String =
+        context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: "0"
 
     private fun fetchLatestRelease(): JSONObject {
         val connection = URL(RELEASES_URL).openConnection() as HttpURLConnection
