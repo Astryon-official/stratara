@@ -18,6 +18,7 @@ import com.tarang.launcher.data.SettingsStore
 import com.tarang.launcher.data.UpdateChecker
 import com.tarang.launcher.data.UpdateInstaller
 import com.tarang.launcher.data.UpdateResult
+import com.tarang.launcher.data.UpdateStore
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.Job
@@ -25,6 +26,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.first
@@ -62,6 +64,7 @@ class LauncherViewModel(
     private val updateChecker: UpdateChecker,
     private val apkDownloader: ApkDownloader,
     private val updateInstaller: UpdateInstaller,
+    private val updateStore: UpdateStore,
 ) : ViewModel() {
 
     private val apps = MutableStateFlow<List<AppInfo>>(emptyList())
@@ -69,6 +72,9 @@ class LauncherViewModel(
     private val _focusedPackage = MutableStateFlow<String?>(null)
     private val _updateState = MutableStateFlow<UpdateUiState>(UpdateUiState.Idle)
     val updateState: StateFlow<UpdateUiState> = _updateState
+    private val _updateNoticeVisible = MutableStateFlow(false)
+    /** Quiet home banner: a newer release exists and the user has not dismissed this tag. */
+    val updateNoticeVisible: StateFlow<Boolean> = _updateNoticeVisible.asStateFlow()
     private var downloadPollJob: Job? = null
 
     /** The currently focused app package — drives the ambient wallpaper glow. Kept OUT of [uiState]
@@ -113,6 +119,7 @@ class LauncherViewModel(
         viewModelScope.launch {
             repository.packageEvents().debounce(400).collect { refresh(showLoading = false) }
         }
+        viewModelScope.launch { probeForUpdateOnLaunch() }
     }
 
     /** [showLoading] is false for background refreshes (e.g. install/uninstall) so the grid
@@ -214,12 +221,74 @@ class LauncherViewModel(
             _updateState.value = when (
                 val result = updateChecker.checkForUpdate(System.currentTimeMillis(), force = force)
             ) {
-                is UpdateResult.UpToDate -> UpdateUiState.UpToDate
-                is UpdateResult.UpdateAvailable ->
+                is UpdateResult.UpToDate -> {
+                    updateStore.clearPendingUpdate()
+                    _updateNoticeVisible.value = false
+                    UpdateUiState.UpToDate
+                }
+                is UpdateResult.UpdateAvailable -> {
+                    updateStore.setPendingUpdate(result.versionTag, result.changelog, result.apkUrl)
                     UpdateUiState.Available(result.versionTag, result.changelog, result.apkUrl)
+                }
                 is UpdateResult.Error -> UpdateUiState.Error(result.reason)
             }
         }
+    }
+
+    /**
+     * Quiet launch probe: restores a stored pending release, then checks GitHub without flipping
+     * Settings into Checking. Errors and "up to date" stay silent on Home.
+     */
+    private suspend fun probeForUpdateOnLaunch() {
+        delay(LAUNCH_PROBE_DELAY_MS)
+        if (!canAcceptLaunchProbe(_updateState.value)) return
+
+        val dismissed = updateStore.dismissedNoticeTag.first()
+        val pending = updateStore.pendingUpdate.first()
+        if (pending != null && pending.versionTag != dismissed) {
+            _updateState.value = UpdateUiState.Available(
+                pending.versionTag,
+                pending.changelog,
+                pending.apkUrl,
+            )
+            _updateNoticeVisible.value = true
+        }
+
+        if (!canAcceptLaunchProbe(_updateState.value)) return
+
+        when (val result = updateChecker.checkForUpdate(System.currentTimeMillis())) {
+            is UpdateResult.UpdateAvailable -> {
+                updateStore.setPendingUpdate(result.versionTag, result.changelog, result.apkUrl)
+                if (!canAcceptLaunchProbe(_updateState.value)) return
+                _updateState.value = UpdateUiState.Available(
+                    result.versionTag,
+                    result.changelog,
+                    result.apkUrl,
+                )
+                _updateNoticeVisible.value = result.versionTag != updateStore.dismissedNoticeTag.first()
+            }
+            is UpdateResult.UpToDate -> {
+                updateStore.clearPendingUpdate()
+                if (!canAcceptLaunchProbe(_updateState.value)) return
+                _updateNoticeVisible.value = false
+                if (_updateState.value is UpdateUiState.Available) {
+                    _updateState.value = UpdateUiState.Idle
+                }
+            }
+            is UpdateResult.Error -> {
+                // Cooldown or network failure: keep any restored pending notice.
+            }
+        }
+    }
+
+    /** Hides the home notice for this version until a newer tag appears. */
+    fun dismissUpdateNotice() {
+        val available = _updateState.value as? UpdateUiState.Available ?: run {
+            _updateNoticeVisible.value = false
+            return
+        }
+        _updateNoticeVisible.value = false
+        viewModelScope.launch { updateStore.dismissNotice(available.versionTag) }
     }
 
     fun downloadUpdate(apkUrl: String) {
@@ -278,6 +347,9 @@ class LauncherViewModel(
         /** How often the download-progress poll loop re-reads DownloadManager's cursor. */
         private const val DOWNLOAD_POLL_INTERVAL_MS = 500L
 
+        /** Wait for the first home frames before a network update probe. */
+        private const val LAUNCH_PROBE_DELAY_MS = 2_500L
+
         fun provideFactory(
             repository: AppRepository,
             favoritesStore: FavoritesStore,
@@ -287,13 +359,21 @@ class LauncherViewModel(
             updateChecker: UpdateChecker,
             apkDownloader: ApkDownloader,
             updateInstaller: UpdateInstaller,
+            updateStore: UpdateStore,
         ): ViewModelProvider.Factory = viewModelFactory {
             initializer {
                 LauncherViewModel(
                     repository, favoritesStore, settingsStore, appListCache, iconLoader,
-                    updateChecker, apkDownloader, updateInstaller,
+                    updateChecker, apkDownloader, updateInstaller, updateStore,
                 )
             }
         }
     }
 }
+
+/** Idle / result states that a silent launch probe may replace; never interrupt a download. */
+private fun canAcceptLaunchProbe(state: UpdateUiState): Boolean =
+    state is UpdateUiState.Idle ||
+        state is UpdateUiState.UpToDate ||
+        state is UpdateUiState.Available ||
+        state is UpdateUiState.Error

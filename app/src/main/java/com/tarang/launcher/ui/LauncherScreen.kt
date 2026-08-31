@@ -116,16 +116,20 @@ fun LauncherScreen(
             container.updateChecker,
             container.apkDownloader,
             container.updateInstaller,
+            container.updateStore,
         ),
     )
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val updateState by viewModel.updateState.collectAsStateWithLifecycle()
+    val updateNoticeVisible by viewModel.updateNoticeVisible.collectAsStateWithLifecycle()
     val settingsOrNull by viewModel.settings.collectAsStateWithLifecycle()
     // Hold the (black) first frame until the real settings land — a few ms — rather than render
     // default settings (wrong wallpaper/theme) and visibly swap. Never null again after that.
     val settings = settingsOrNull ?: return
     var showSettings by remember { mutableStateOf(false) }
+    var openSettingsAtUpdates by remember { mutableStateOf(false) }
     val tuneFocus = remember { FocusRequester() }
+    val bannerFocus = remember { FocusRequester() }
 
     // tvOS-style navigation sounds; the setting gates them inside UiSounds.
     val sounds = container.uiSounds
@@ -597,7 +601,13 @@ fun LauncherScreen(
                     onDownloadUpdate = viewModel::downloadUpdate,
                     onInstallUpdate = viewModel::installUpdate,
                     onRequestInstallPermission = viewModel::requestInstallPermission,
-                    onClose = { sounds.back(); showSettings = false },
+                    onClose = {
+                        sounds.back()
+                        showSettings = false
+                        openSettingsAtUpdates = false
+                    },
+                    startAtUpdates = openSettingsAtUpdates,
+
                 )
             } else {
                 Column(modifier = Modifier.fillMaxSize()) {
@@ -613,7 +623,7 @@ fun LauncherScreen(
                         },
                     ) {
                         TopBar(
-                            onOpenSettings = { sounds.click(); showSettings = true },
+                            onOpenSettings = { sounds.click(); openSettingsAtUpdates = false; showSettings = true },
                             onEnterFrame = { sounds.click(); frameOn = true },
                             nowPlaying = nowPlaying,
                             // Clicking the chip jumps back into whatever app is playing, with the
@@ -631,6 +641,25 @@ fun LauncherScreen(
                             glassRefract = !transitioning && !frameMoving,
                             glassBlur = settings.glassBlur,
                         )
+                    }
+                    val availableUpdate = updateState as? com.tarang.launcher.viewmodel.UpdateUiState.Available
+                    if (updateNoticeVisible && availableUpdate != null) {
+                        UpdateAvailableBanner(
+                            versionTag = availableUpdate.versionTag,
+                            onUpdate = {
+                                sounds.click()
+                                openSettingsAtUpdates = true
+                                showSettings = true
+                            },
+                            onLater = {
+                                sounds.click()
+                                viewModel.dismissUpdateNotice()
+                            },
+                            focusRequester = bannerFocus,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 56.dp, vertical = 8.dp),
+                    )
                     }
                     // Dock + grid scale up and drop off the bottom — same choreography for frame mode and
                     // for app launch (so the two share one motion language).
@@ -662,7 +691,7 @@ fun LauncherScreen(
                                 onReorder = viewModel::setFavoritesOrder,
                                 columns = settings.columns,
                                 backdrop = backdrop,
-                                topFocusRequester = tuneFocus,
+                                topFocusRequester = if (updateNoticeVisible) bannerFocus else tuneFocus,
                                 onFavoriteHover = { favoriteHover = it },
                                 onHideApp = { viewModel.setAppHidden(it, true) },
                                 onAppInfo = { viewModel.openAppInfo(it) },
@@ -942,4 +971,62 @@ private fun openNotificationAccess(context: Context) {
 @Composable
 private fun Centered(content: @Composable () -> Unit) {
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { content() }
+}
+
+@Composable
+private fun UpdateAvailableBanner(
+    versionTag: String,
+    onUpdate: () -> Unit,
+    onLater: () -> Unit,
+    focusRequester: FocusRequester,
+    modifier: Modifier = Modifier,
+) {
+    val colors = LocalLauncherColors.current
+    Row(
+        modifier = modifier
+            .background(colors.chip, RoundedCornerShape(20.dp))
+            .padding(horizontal = 20.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        Text(
+            text = "Version $versionTag is available.",
+            color = colors.text,
+            fontSize = 16.sp,
+            modifier = Modifier.weight(1f),
+        )
+        BannerActionChip(
+            label = "Update",
+            onClick = onUpdate,
+            modifier = Modifier.focusRequester(focusRequester),
+        )
+        BannerActionChip(label = "Later", onClick = onLater)
+    }
+}
+
+@OptIn(ExperimentalTvMaterial3Api::class)
+@Composable
+private fun BannerActionChip(
+    label: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val colors = LocalLauncherColors.current
+    Surface(
+        onClick = onClick,
+        modifier = modifier,
+        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(percent = 50)),
+        scale = ClickableSurfaceDefaults.scale(focusedScale = 1.06f),
+        colors = ClickableSurfaceDefaults.colors(
+            containerColor = colors.chromeOpaque,
+            focusedContainerColor = colors.highlight,
+        ),
+    ) {
+        Text(
+            text = label,
+            color = colors.text,
+            fontSize = 14.sp,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+        )
+    }
 }

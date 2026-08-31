@@ -164,13 +164,17 @@ fun SettingsScreen(
     onInstallUpdate: (File) -> Unit,
     onRequestInstallPermission: () -> Unit,
     onClose: () -> Unit,
+    startAtUpdates: Boolean = false,
 ) {
     val colors = LocalLauncherColors.current
-    var section by remember { mutableStateOf(SettingsSection.APPEARANCE) }
+    var section by remember {
+        mutableStateOf(if (startAtUpdates) SettingsSection.UPDATES else SettingsSection.APPEARANCE)
+    }
     // Hold Updates through Checking/Downloading and a short settle after, so a focus blip
     // onto Appearance cannot dispose the result pane before the next action chip focuses.
     var holdUpdatesSection by remember { mutableStateOf(false) }
     val firstSection = remember { FocusRequester() }
+    val updatesSection = remember { FocusRequester() }
 
     BackHandler { onClose() }
 
@@ -199,7 +203,11 @@ fun SettingsScreen(
                                 section = s
                             }
                         },
-                        modifier = if (i == 0) Modifier.focusRequester(firstSection) else Modifier,
+                        modifier = when {
+                            s == SettingsSection.UPDATES -> Modifier.focusRequester(updatesSection)
+                            i == 0 -> Modifier.focusRequester(firstSection)
+                            else -> Modifier
+                        },
                     )
                     Spacer(Modifier.height(6.dp))
                 }
@@ -311,7 +319,11 @@ fun SettingsScreen(
         }
     }
 
-    LaunchedEffect(Unit) { runCatching { firstSection.requestFocus() } }
+    // Open on Updates when the home banner sent the user here; otherwise Appearance.
+    LaunchedEffect(Unit) {
+        val target = if (startAtUpdates) updatesSection else firstSection
+        runCatching { target.requestFocus() }
+    }
 
     // Hold Updates while Checking/Downloading, then briefly after the result arrives so the
     // next action chip can reclaim focus before the nav rail can steal the section.
