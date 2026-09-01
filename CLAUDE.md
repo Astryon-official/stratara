@@ -133,9 +133,7 @@ Settings > Appearance > Wallpaper.
 1. Change `versionCode` and `versionName` in `app/build.gradle.kts`.
 2. Commit the code first, then the version bump, then the baseline profile
    (`app/src/release/generated/baselineProfiles/`).
-3. End each commit message with the co-author trailer for your model, for
-   example: `Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>`.
-4. Create the GitHub release:
+3. Create the GitHub release:
    ```
    gh release create vX.Y.Z <apk> --title "vX.Y.Z" --notes "..."
    ```
