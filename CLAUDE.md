@@ -3,8 +3,8 @@
 Tarang is a minimal, tvOS-inspired Android TV launcher. It uses Kotlin, Jetpack
 Compose for TV, MVVM, and DataStore. You build it from the command line with
 Gradle. You deploy it to a real Chromecast with Google TV ("sabrina", Android
-14, 32-bit `armeabi-v7a`). The release APK is signed with the debug key, because
-this is a personal launcher and not a Play Store app.
+14, 32-bit `armeabi-v7a`). The release APK is signed with the same local debug
+key, so in-place updates work on the Chromecast.
 
 ## Writing style: ASD-STE100 Simplified Technical English
 
@@ -133,7 +133,9 @@ Settings > Appearance > Wallpaper.
 1. Change `versionCode` and `versionName` in `app/build.gradle.kts`.
 2. Commit the code first, then the version bump, then the baseline profile
    (`app/src/release/generated/baselineProfiles/`).
-3. Create the GitHub release:
+3. Keep `keystore.properties` in the project root. Point it to the same local
+   debug keystore for every release build.
+4. Create the GitHub release:
    ```
    gh release create vX.Y.Z <apk> --title "vX.Y.Z" --notes "..."
    ```
