@@ -17,6 +17,7 @@ captures/
 # --- Signing (never commit) ---
 *.jks
 *.keystore
+keystore.properties
 
 # --- IDE / editor ---
 .idea/
