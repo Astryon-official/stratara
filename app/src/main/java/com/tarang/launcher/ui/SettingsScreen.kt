@@ -218,16 +218,20 @@ fun SettingsScreen(
             // Right: detail pane for the selected section. The pane is a focus group that swallows
             // vertical exits: from its last (or first) item a D-pad down/up search would otherwise
             // widen to the whole screen and land on the section rail, whose rows sit lower/higher on
-            // screen. Left still exits to the rail.
+            // screen. Left still exits to the rail. Updates is the exception: it has one action, so
+            // Up/Down return to the Updates rail row so the user can reach Diagnostics.
             Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .focusProperties {
                         exit = { direction ->
-                            if (direction == FocusDirection.Down || direction == FocusDirection.Up) {
-                                FocusRequester.Cancel
-                            } else {
-                                FocusRequester.Default
+                            when {
+                                direction == FocusDirection.Left || direction == FocusDirection.Right ->
+                                    FocusRequester.Default
+                                section == SettingsSection.UPDATES &&
+                                    (direction == FocusDirection.Down || direction == FocusDirection.Up) ->
+                                    updatesSection
+                                else -> FocusRequester.Cancel
                             }
                         }
                     }
@@ -308,6 +312,7 @@ fun SettingsScreen(
                         onDownloadUpdate = onDownloadUpdate,
                         onInstallUpdate = onInstallUpdate,
                         onRequestInstallPermission = onRequestInstallPermission,
+                        railFocus = updatesSection,
                     )
 
                     SettingsSection.DIAGNOSTICS -> DiagnosticsPane(
@@ -1272,6 +1277,9 @@ private fun DiagnosticsPane(
 /**
  * "Check for updates": queries GitHub Releases, then walks the user through download and install.
  * Every step is manual — no auto-download, no auto-install.
+ *
+ * [railFocus] is the Updates row on the left. Up, Down, and Left from the action return there so
+ * the user can leave the action and reach Diagnostics.
  */
 @Composable
 private fun UpdatesPane(
@@ -1280,6 +1288,7 @@ private fun UpdatesPane(
     onDownloadUpdate: (String) -> Unit,
     onInstallUpdate: (File) -> Unit,
     onRequestInstallPermission: () -> Unit,
+    railFocus: FocusRequester,
 ) {
     val context = LocalContext.current
     val colors = LocalLauncherColors.current
@@ -1289,11 +1298,17 @@ private fun UpdatesPane(
         }.getOrNull() ?: "unknown"
     }
 
-    // Keep focus inside Updates when the focused chip is replaced (Idle→Checking,
-    // Available→Downloading, …). Otherwise focus falls to the left rail and selects Appearance.
+    // Reclaim focus only when the action chip is replaced (Idle→Checking, …). Do not steal focus
+    // on first mount: browsing the left rail to Updates must leave focus on the Updates row.
     val actionFocus = remember { FocusRequester() }
+    val actionModifier = Modifier.updatesActionFocus(actionFocus, railFocus)
     val stateKey = updateState::class
+    var didMount by remember { mutableStateOf(false) }
     LaunchedEffect(stateKey) {
+        if (!didMount) {
+            didMount = true
+            return@LaunchedEffect
+        }
         yield()
         runCatching { actionFocus.requestFocus() }
     }
@@ -1326,7 +1341,7 @@ private fun UpdatesPane(
 
         when (updateState) {
             is UpdateUiState.Idle ->
-                ToggleChip("Check for updates", active = false, modifier = Modifier.focusRequester(actionFocus)) {
+                ToggleChip("Check for updates", active = false, modifier = actionModifier) {
                     onCheckForUpdate(false)
                 }
 
@@ -1335,12 +1350,12 @@ private fun UpdatesPane(
                     "Checking…",
                     color = colors.textDim,
                     fontSize = 14.sp,
-                    modifier = Modifier.focusRequester(actionFocus).focusable(),
+                    modifier = actionModifier.focusable(),
                 )
 
             is UpdateUiState.UpToDate -> {
                 Text("You're on the latest version.", color = okColor(colors.isDark), fontSize = 14.sp)
-                ToggleChip("Check again", active = false, modifier = Modifier.focusRequester(actionFocus)) {
+                ToggleChip("Check again", active = false, modifier = actionModifier) {
                     onCheckForUpdate(false)
                 }
             }
@@ -1362,7 +1377,7 @@ private fun UpdatesPane(
                         modifier = Modifier.fillMaxWidth(0.7f),
                     )
                 }
-                ToggleChip("Download", active = false, modifier = Modifier.focusRequester(actionFocus)) {
+                ToggleChip("Download", active = false, modifier = actionModifier) {
                     onDownloadUpdate(updateState.apkUrl)
                 }
             }
@@ -1372,12 +1387,12 @@ private fun UpdatesPane(
                     "Downloading… ${updateState.progressPercent}%",
                     color = colors.textDim,
                     fontSize = 14.sp,
-                    modifier = Modifier.focusRequester(actionFocus).focusable(),
+                    modifier = actionModifier.focusable(),
                 )
 
             is UpdateUiState.ReadyToInstall -> {
                 Text("Download complete.", color = okColor(colors.isDark), fontSize = 14.sp)
-                ToggleChip("Install", active = false, modifier = Modifier.focusRequester(actionFocus)) {
+                ToggleChip("Install", active = false, modifier = actionModifier) {
                     onInstallUpdate(updateState.apkFile)
                 }
             }
@@ -1388,7 +1403,7 @@ private fun UpdatesPane(
                     color = warningColor(colors.isDark),
                     fontSize = 14.sp,
                 )
-                ToggleChip("Grant permission", active = false, modifier = Modifier.focusRequester(actionFocus)) {
+                ToggleChip("Grant permission", active = false, modifier = actionModifier) {
                     onRequestInstallPermission()
                 }
             }
@@ -1399,19 +1414,29 @@ private fun UpdatesPane(
                     color = warningColor(colors.isDark),
                     fontSize = 14.sp,
                 )
-                ToggleChip("Check for updates again", active = false, modifier = Modifier.focusRequester(actionFocus)) {
+                ToggleChip("Check for updates again", active = false, modifier = actionModifier) {
                     onCheckForUpdate(true)
                 }
             }
 
             is UpdateUiState.Error -> {
                 Text(updateState.message, color = warningColor(colors.isDark), fontSize = 14.sp)
-                ToggleChip("Retry", active = false, modifier = Modifier.focusRequester(actionFocus)) {
+                ToggleChip("Retry", active = false, modifier = actionModifier) {
                     onCheckForUpdate(true)
                 }
             }
         }
     }
+}
+
+/** Focus target for the Updates action, with Up/Down/Left returning to the section rail. */
+private fun Modifier.updatesActionFocus(
+    actionFocus: FocusRequester,
+    railFocus: FocusRequester,
+): Modifier = focusRequester(actionFocus).focusProperties {
+    up = railFocus
+    down = railFocus
+    left = railFocus
 }
 
 @Composable

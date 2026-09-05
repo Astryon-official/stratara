@@ -777,7 +777,9 @@ private fun TopBar(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(start = 56.dp, end = 56.dp, top = 28.dp),
+            // Extra top/bottom inset so the chips clear the TV bezel and stay distinct from the
+            // scrolling dock/grid when content moves up under the bar.
+            .padding(start = 56.dp, end = 56.dp, top = 40.dp, bottom = 12.dp),
     ) {
         // Left group: clock + (optional) weather, kept together as their own frosted containers so text
         // stays legible over any wallpaper without scrimming the whole image.
