@@ -28,10 +28,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.ui.graphics.BlurEffect
-import androidx.compose.ui.graphics.TileMode
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.layer.GraphicsLayer
 import androidx.compose.ui.graphics.layer.drawLayer
@@ -39,6 +43,7 @@ import androidx.compose.ui.graphics.rememberGraphicsLayer
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.tv.material3.Text
@@ -57,6 +62,30 @@ private val DockPad = 20.dp // inner padding of the frosted dock container
 // bring-into-view spec won't scroll the already-visible dock, so it stays put until you move down.
 private val DockBottomGap = 24.dp
 private val MinTopGap = 84.dp // floor for the computed top gap on very short viewports
+// Soft dissolve at the top of the scrolling surface so tiles fade under the top bar instead of
+// meeting it with a hard edge. Height is the fade ramp only (the bar itself sits above this pane).
+private val TopFadeHeight = 64.dp
+
+/**
+ * Fade the top of this layer to transparent. Uses an offscreen buffer + DstIn so only alpha is
+ * masked — no blur pass, cheap enough for the Streamer GPU.
+ */
+private fun Modifier.topFadeMask(fadeHeight: Dp): Modifier =
+    graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
+        .drawWithContent {
+            drawContent()
+            val fadePx = fadeHeight.toPx().coerceAtMost(size.height)
+            if (fadePx <= 0f) return@drawWithContent
+            drawRect(
+                brush = Brush.verticalGradient(
+                    0f to Color.Transparent,
+                    1f to Color.Black,
+                    startY = 0f,
+                    endY = fadePx,
+                ),
+                blendMode = BlendMode.DstIn,
+            )
+        }
 
 /**
  * Minimal bring-into-view: don't move an item that's already fully visible (keeps the dock low on
@@ -176,7 +205,9 @@ fun LauncherContent(
         CompositionLocalProvider(LocalBringIntoViewSpec provides bringIntoView) {
         LazyColumn(
             state = listState,
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .fillMaxSize()
+                .topFadeMask(TopFadeHeight),
             // No horizontal content padding: the grid rows and the dock apply their own side insets, so
             // the dock's frosted bar can reach a DockPad past the grid margin (see the dock item below).
             contentPadding = PaddingValues(top = topGap, bottom = 56.dp),
