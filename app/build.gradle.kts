@@ -25,8 +25,8 @@ android {
         applicationId = "com.tarang.launcher"
         minSdk = 28
         targetSdk = 35
-        versionCode = 23
-        versionName = "0.3.14"
+        versionCode = 24
+        versionName = "0.3.15"
     }
 
     signingConfigs {
