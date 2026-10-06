@@ -1,108 +1,294 @@
 <div align="center">
 
-# 🌊 Tarang
+# 🌌 Stratara
 
-### A minimal, tvOS‑inspired launcher for Android TV & Google TV.
+### A modern, tvOS-inspired Linux shell and operating system experience.
 
-Full‑bleed artwork, liquid‑glass chrome, and a dock that gets out of your way — built D‑pad‑first for the living room.
+A controller-first, full-screen Linux interface inspired by modern tvOS, built around a clean and immersive living-room experience.
 
-![Kotlin](https://img.shields.io/badge/Kotlin-7F52FF?logo=kotlin&logoColor=white)
-![Jetpack Compose](https://img.shields.io/badge/Jetpack%20Compose%20for%20TV-4285F4?logo=jetpackcompose&logoColor=white)
-![Platform](https://img.shields.io/badge/Android%20TV%20%C2%B7%20Google%20TV-3DDC84?logo=android&logoColor=white)
-![Min SDK](https://img.shields.io/badge/min%20SDK-28-orange)
-
-<img src="demo/ss/01-home.png" width="100%" alt="Tarang home screen — full-bleed Frame Art wallpaper and a frosted dock" />
+**Stratara is currently under active development.**
 
 </div>
 
 ---
 
-## ✨ Highlights
+## ✨ What is Stratara?
 
-- **A home that disappears.** At rest you see only the wallpaper and a frosted dock pinned to the bottom. Press **down** and your full app grid slides up — Apple‑TV style.
-- **Frame Art.** Turn the TV into a framed painting — a folder slideshow or a single photo, full‑bleed with an elegant floating clock. Press **←/→** to flip through pictures; it can start itself after an idle timeout.
-- **Living wallpapers.** Hover a favorite and its show/movie poster plays full‑screen as the background.
-- **Choose your motion.** Pick how transitions feel — a calm **Default**, fluid **Glide** springs, or **Depth**, where the home recedes into a painting and dives into an app.
-- **Real Liquid Glass.** The clock, status pills, and dock can refract the wallpaper through their edges via an AGSL shader (Android 13+) over a frosted blur — an optional toggle, off by default to stay light on weak TV GPUs.
-- **Made for the remote.** Every interaction is D‑pad‑first — snappy focus, long‑press menus, no touch required.
-- **Actually replaceable.** A guided **Home setup** flow gets Tarang running as your TV's home screen, even on Google TV where the system blocks setting a third‑party launcher.
+Stratara is a **Linux-native operating system experience** designed around the living room.
 
----
+It combines the flexibility and power of Linux with a polished, controller-first interface inspired by modern tvOS.
 
-## 📸 A look around
+Instead of putting a traditional desktop in front of the user, Stratara aims to make the **shell itself the experience**.
 
-<table>
-  <tr>
-    <td width="50%"><img src="demo/ss/07-frame-art.png" alt="Frame Art" /><br/><sub><b>Frame Art</b> — the TV as a framed painting, with a floating clock. Press ←/→ to flip photos.</sub></td>
-    <td width="50%"><img src="demo/ss/03-grid.png" alt="App grid" /><br/><sub><b>App grid</b> — press down to reveal every installed app.</sub></td>
-  </tr>
-  <tr>
-    <td width="50%"><img src="demo/ss/05-settings.png" alt="Settings — Appearance" /><br/><sub><b>Settings</b> — animation style, theme, wallpapers, grid density.</sub></td>
-    <td width="50%"><img src="demo/ss/02b-app-artwork.png" alt="App artwork wallpaper" /><br/><sub><b>App artwork</b> — the focused favorite's poster becomes the wallpaper.</sub></td>
-  </tr>
-  <tr>
-    <td width="50%"><img src="demo/ss/04-context-menu.png" alt="Long-press menu" /><br/><sub><b>Long‑press menu</b> — favorite, hide, app info, uninstall.</sub></td>
-    <td width="50%"><img src="demo/ss/06-home-setup.png" alt="Settings — Home setup" /><br/><sub><b>Home setup</b> — live checks + deep‑links to become the default Home.</sub></td>
-  </tr>
-</table>
-
----
-
-## 🎛 Features
-
-**Home & navigation**
-- Frosted **dock** of favorites — pin, reorder (move mode), and remove your most‑used apps.
-- **App grid** of every launchable app (TV apps *and* sideloaded phone apps), sorted alphabetically and refreshed live as you install/uninstall.
-- Dock anchored to the bottom with the grid tucked below the fold, so the home screen stays calm.
-
-**Look & feel**
-- **Wallpapers** — gradient presets, your own photo, app artwork, or your Frame Art; rendered sharp and static to stay easy on weak TV GPUs.
-- **App‑artwork wallpaper** — plays a favorite's TV poster art full‑screen while it's focused (reads the system TV artwork).
-- **Animation styles** — pick how the big transitions feel: **Default** (chrome scales up and flies apart), **Glide** (fluid springs, no blur), or **Depth** (the home recedes into a painting and dives into an app).
-- **Liquid Glass** — optional AGSL refraction + frosted blur on the chrome (Android 13+, off by default to save GPU on slower TVs), with a flat‑tint fallback everywhere else.
-- **Theme** — Light, Dark, or Automatic (follows time of day).
-- **Adjustable density** — 3 to 7 columns.
-
-**Frame Art**
-- Turn the TV into a **framed picture** — a folder slideshow, a single photo, or your current wallpaper, shown full‑bleed with no chrome.
-- **←/→ to page** through a folder's photos, with slow cross‑fades and an optional "living‑painting" drift.
-- An elegant **floating clock** (optional) with configurable position, size, and date.
-- **Auto‑start** after a configurable idle time, so it doubles as a screensaver; press any key to come back.
-
-**Daily driver**
-- **App management** from a long‑press: add/remove favorite, **Hide app**, **App info**, **Uninstall**.
-- **Hidden apps** — tuck apps out of the grid and bring them back from Settings.
-- **Reduce motion** — calms Frame Art drift and slideshow, tile‑focus springs, and the app‑launch animation.
-- **Home setup** — detects whether Tarang is your default Home and whether the redirect service is on, and deep‑links you to fix each. On Google TV (which won't let an app set itself as Home) an accessibility service quietly returns you to Tarang whenever the stock launcher surfaces.
-- **Status bar** — clock & date, Wi‑Fi indicator, and quick shortcuts into Wi‑Fi / Android settings.
-
----
-
-## 🛠 Built with
-
-- **Kotlin** + **Jetpack Compose for TV** (`androidx.tv:tv-material3`)
-- **MVVM** with `StateFlow` and manual DI
-- **DataStore (Preferences)** for settings
-- **AGSL `RuntimeShader`** for the glass refraction
-- Min SDK **28** (Android 9) · Target/Compile SDK **35** · built from the **Gradle CLI** (no Android Studio required)
-
----
-
-## 🚀 Build & install
-
-```bash
-# Build a release APK
-./gradlew :app:assembleRelease
-
-# Install to a connected device (or wireless ADB target)
-adb install -r app/build/outputs/apk/release/app-release.apk
+```text
+Linux
+  ↓
+KDE / KWin
+  ↓
+Stratara Shell
+  ↓
+Apps · Games · Media · Settings
 ```
 
-> **Tip:** debug builds run fine on an emulator but are noticeably slow on real TV hardware — use the **release** build on a device.
+The goal is simple:
 
-Then, on the device, open **Settings → Home setup** and follow the steps to make Tarang your home screen.
+> **A Linux computer that feels like a purpose-built modern TV operating system.**
 
 ---
+
+## ✨ Design goals
+
+* **Content first.** The interface should get out of the way when it isn't needed.
+* **Controller first.** Every important part of the interface should be usable from a controller or remote.
+* **Beautiful by default.** Large artwork, smooth motion, depth, blur and glass effects without unnecessary visual clutter.
+* **Fast.** The shell should remain responsive on everything from low-power living-room PCs to high-end gaming systems.
+* **Linux underneath.** Users still get the flexibility, applications, games and hardware support of Linux.
+* **Modular.** System components should be replaceable without rebuilding the entire operating system.
+* **Open.** Stratara is built as an open-source project by Astryon.
+
+---
+
+## 🎮 Home
+
+The Stratara home screen is designed around the same principle as modern TV interfaces:
+
+**the content is the interface.**
+
+When idle, the UI should remain minimal and let the wallpaper or currently selected content take over the screen.
+
+Navigation can reveal:
+
+* Favorite applications
+* Installed applications
+* Games
+* Media
+* Recent applications
+* System controls
+
+Focus movement, transitions and animations are designed specifically for D-pad and controller navigation.
+
+---
+
+## 🪟 Liquid Glass
+
+Stratara takes inspiration from the translucent, depth-based interfaces introduced in modern tvOS.
+
+System surfaces can use:
+
+* Frosted backgrounds
+* Dynamic transparency
+* Blur
+* Refraction
+* Depth
+* Contextual lighting
+* Smooth transitions
+
+The implementation will be designed specifically for Linux hardware rather than relying on Android's rendering APIs.
+
+---
+
+## 🖼 Frame Art
+
+Turn the display into a digital picture frame.
+
+Frame Art will support:
+
+* Local photo folders
+* Individual images
+* Wallpapers
+* Artwork
+* Slideshow playback
+* Floating clock
+* Configurable transitions
+* Automatic idle activation
+
+The goal is for the interface to completely disappear when the computer isn't being actively used.
+
+---
+
+## 🎛 Control Centre
+
+Stratara will provide a dedicated system control surface for commonly used controls.
+
+Planned controls include:
+
+* Wi-Fi
+* Bluetooth
+* Audio
+* Display
+* Brightness
+* Power
+* Network
+* Controller status
+* Media playback
+* User/session controls
+
+Controls should appear contextually without completely taking over the current application.
+
+---
+
+## 🎮 Gaming
+
+Stratara is designed to work as a normal Linux computer **and** a living-room gaming system.
+
+The shell will be designed around:
+
+* Xbox controllers
+* PlayStation controllers
+* Bluetooth remotes
+* USB controllers
+* Keyboard and mouse
+* Steam
+* Linux games
+* Game launchers
+
+Games should be able to run normally underneath the shell without requiring a separate operating system.
+
+---
+
+## 🖥 Desktop & Linux applications
+
+Stratara is not intended to lock the user into a TV-only ecosystem.
+
+Linux applications will remain normal Linux applications.
+
+The shell will provide a TV-friendly way to launch and manage them while the underlying system remains a full Linux environment.
+
+The long-term goal is to support switching between:
+
+**Stratara Mode**
+
+and
+
+**Desktop Mode**
+
+without requiring a separate installation.
+
+---
+
+## ⚙️ System architecture
+
+Stratara is being developed as a shell and operating-system experience on top of established Linux technologies.
+
+The current architectural direction is:
+
+```text
+
+│       Stratara Shell        │
+├─────────────────────────────┤
+│      KDE / Plasma / KWin    │
+├─────────────────────────────┤
+│      Linux system stack     │
+├─────────────────────────────┤
+│       Linux kernel          │
+├─────────────────────────────┤
+│          Hardware           │
+└─────────────────────────────┘
+```
+
+This allows Stratara to focus on the user experience while relying on the mature Linux ecosystem for hardware, networking, audio, graphics and applications.
+
+---
+
+## 🛠 Development
+
+Stratara is currently in **early development**.
+
+The project originally started from the exploration of the Android TV launcher **Tarang**, whose tvOS-inspired interaction model provided inspiration for the project.
+
+The Linux version is being substantially reworked into a native Linux shell rather than remaining an Android application.
+
+### Planned technology
+
+* Linux
+* Wayland
+* KDE / KWin
+* Qt
+* Qt Quick / QML
+* KDE Frameworks
+* PipeWire
+* NetworkManager
+* BlueZ
+* systemd
+
+The exact architecture is still evolving.
+
+---
+
+## 🚀 Development status
+
+### Current
+
+* [ ] Linux-native shell
+* [ ] Basic full-screen home
+* [ ] D-pad/controller navigation
+* [ ] Linux application discovery
+* [ ] Linux application launching
+* [ ] Wallpaper system
+* [ ] Basic system integration
+
+### Planned
+
+* [ ] App library
+* [ ] Favorites
+* [ ] Control Centre
+* [ ] Settings
+* [ ] Notifications
+* [ ] Media controls
+* [ ] Bluetooth controls
+* [ ] Wi-Fi controls
+* [ ] Power menu
+* [ ] Frame Art
+* [ ] Liquid Glass effects
+* [ ] Gaming integration
+* [ ] Desktop Mode
+* [ ] Stratara installer
+* [ ] Stratara OS image
+
+---
+
+## 🧭 Project direction
+
+Stratara is intended to evolve from a Linux shell into a complete operating-system experience.
+
+The long-term goal is:
+
+```text
+Install Stratara
+       ↓
+Boot
+       ↓
+Stratara Home
+       ↓
+Apps · Games · Media
+       ↓
+Everything just works
+```
+
+The user should never need to think about the underlying desktop environment unless they want to.
+
+---
+
+## 📜 Origin
+
+Stratara's early UI direction was inspired by **Tarang**, an open-source tvOS-inspired Android TV launcher.
+
+Tarang's original work remains credited to its respective authors.
+
+Stratara is being developed as a separate **Linux-native project** and is not an Android TV launcher.
+
+---
+
+<div align="center">
+
+### 🌌 Stratara
+
+**A different kind of Linux experience.**
+
+Built by **Astryon**.
+
+</div>
+
 
 <div align="center">
 <sub><i>Tarang</i> (तरंग) — "wave." Built for the couch. 🛋️</sub>
