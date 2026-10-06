@@ -23,6 +23,8 @@ Instead of putting a traditional desktop in front of the user, Stratara aims to 
 ```text
 Linux
   ↓
+Xodus
+  ↓
 KDE / KWin
   ↓
 Stratara Shell
@@ -173,10 +175,12 @@ Stratara is being developed as a shell and operating-system experience on top of
 The current architectural direction is:
 
 ```text
-
+┌─────────────────────────────┐
 │       Stratara Shell        │
 ├─────────────────────────────┤
 │      KDE / Plasma / KWin    │
+├─────────────────────────────┤
+│           Xodus             │
 ├─────────────────────────────┤
 │      Linux system stack     │
 ├─────────────────────────────┤
@@ -186,7 +190,19 @@ The current architectural direction is:
 └─────────────────────────────┘
 ```
 
-This allows Stratara to focus on the user experience while relying on the mature Linux ecosystem for hardware, networking, audio, graphics and applications.
+### Xodus
+
+**Xodus** is being developed as part of the Stratara ecosystem and will provide the underlying operating-system experience beneath the Stratara shell.
+
+Rather than treating Stratara as simply another desktop environment, the long-term goal is for **Xodus and Stratara to work together as a complete living-room Linux platform**.
+
+This separation allows:
+
+* **Xodus** to handle the underlying operating-system experience
+* **KDE / KWin** to provide the compositor and desktop infrastructure
+* **Stratara Shell** to provide the user-facing TV interface
+
+This allows Stratara to focus on the user experience while relying on established Linux technologies for hardware, networking, audio, graphics and applications.
 
 ---
 
@@ -201,6 +217,7 @@ The Linux version is being substantially reworked into a native Linux shell rath
 ### Planned technology
 
 * Linux
+* Xodus
 * Wayland
 * KDE / KWin
 * Qt
@@ -219,6 +236,7 @@ The exact architecture is still evolving.
 
 ### Current
 
+* [ ] Xodus foundation
 * [ ] Linux-native shell
 * [ ] Basic full-screen home
 * [ ] D-pad/controller navigation
@@ -242,6 +260,7 @@ The exact architecture is still evolving.
 * [ ] Liquid Glass effects
 * [ ] Gaming integration
 * [ ] Desktop Mode
+* [ ] Xodus integration
 * [ ] Stratara installer
 * [ ] Stratara OS image
 
@@ -249,12 +268,12 @@ The exact architecture is still evolving.
 
 ## 🧭 Project direction
 
-Stratara is intended to evolve from a Linux shell into a complete operating-system experience.
+Stratara is intended to evolve from a Linux shell into a complete operating-system experience alongside Xodus.
 
 The long-term goal is:
 
 ```text
-Install Stratara
+Install Xodus
        ↓
 Boot
        ↓
@@ -287,9 +306,4 @@ Stratara is being developed as a separate **Linux-native project** and is not an
 
 Built by **Astryon**.
 
-</div>
-
-
-<div align="center">
-<sub><i>Tarang</i> (तरंग) — "wave." Built for the couch. 🛋️</sub>
 </div>
