@@ -24,6 +24,7 @@
 #include "system/MediaManager.h"
 #include "system/PipeWireManager.h"
 #include "system/NotificationManager.h"
+#include "system/XodusManager.h"
 #include "ui/LauncherWindow.h"
 
 int main(int argc, char *argv[])
@@ -54,6 +55,7 @@ int main(int argc, char *argv[])
     qmlRegisterType<Stratara::System::MediaManager>("Stratara.System", 1, 0, "MediaManager");
     qmlRegisterType<Stratara::System::PipeWireManager>("Stratara.System", 1, 0, "PipeWireManager");
     qmlRegisterType<Stratara::System::NotificationManager>("Stratara.System", 1, 0, "NotificationManager");
+    qmlRegisterType<Stratara::System::XodusManager>("Stratara.System", 1, 0, "XodusManager");
     qmlRegisterType<Stratara::UI::LauncherWindow>("Stratara.UI", 1, 0, "LauncherWindow");
 
     // Register metatypes for signals/slots
@@ -79,6 +81,7 @@ int main(int argc, char *argv[])
     auto mediaManager = std::make_unique<Stratara::System::MediaManager>();
     auto pipeWireManager = std::make_unique<Stratara::System::PipeWireManager>();
     auto notificationManager = std::make_unique<Stratara::System::NotificationManager>();
+    auto xodusManager = std::make_unique<Stratara::System::XodusManager>();
 
     // Set up QML engine
     QQmlApplicationEngine engine;
@@ -104,6 +107,7 @@ int main(int argc, char *argv[])
     engine.rootContext()->setContextProperty("mediaManager", mediaManager.get());
     engine.rootContext()->setContextProperty("pipeWireManager", pipeWireManager.get());
     engine.rootContext()->setContextProperty("notificationManager", notificationManager.get());
+    engine.rootContext()->setContextProperty("xodusManager", xodusManager.get());
 
     // Add image provider for app icons
     engine.addImageProvider("appicons", iconProvider.get());

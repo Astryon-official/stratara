@@ -62,6 +62,11 @@ LauncherWindow {
         id: updateInstaller
     }
 
+    // Xodus manager
+    XodusManager {
+        id: xodusManager
+    }
+
     // Background wallpaper layer
     Rectangle {
         id: wallpaperLayer
@@ -150,6 +155,7 @@ LauncherWindow {
         bluetoothManager: bluetoothManager
         powerManager: powerManager
         mediaManager: mediaManager
+        xodusManager: xodusManager
         onClosed: {
             visible = false
         }

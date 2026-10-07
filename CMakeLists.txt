@@ -89,7 +89,14 @@ set(SRCS
     src/system/MediaManager.cpp
     src/system/PipeWireManager.cpp
     src/system/NotificationManager.cpp
+    src/system/XodusManager.cpp
     src/ui/LauncherWindow.cpp
+)
+
+# Xodus service
+set(XODUS_SRCS
+    src/xodus/main.cpp
+    src/xodus/XodusService.cpp
 )
 
 # Resources
@@ -156,8 +163,17 @@ if(SYSTEMD_FOUND)
     target_compile_definitions(stratara PRIVATE HAVE_SYSTEMD)
 endif()
 
+# Xodus service executable
+add_executable(xodus ${XODUS_SRCS})
+target_link_libraries(xodus PRIVATE
+    Qt6::Core
+    Qt6::DBus
+    ${SYSTEMD_LIBRARIES}
+)
+target_compile_definitions(xodus PRIVATE HAVE_SYSTEMD)
+
 # Install
-install(TARGETS stratara DESTINATION ${CMAKE_INSTALL_BINDIR})
+install(TARGETS stratara xodus DESTINATION ${CMAKE_INSTALL_BINDIR})
 install(FILES resources.qrc DESTINATION ${CMAKE_INSTALL_DATADIR}/stratara)
 install(DIRECTORY qml/ DESTINATION ${CMAKE_INSTALL_DATADIR}/stratara/qml)
 install(FILES assets/icons/stratara.svg DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/scalable/apps/ RENAME stratara.svg)

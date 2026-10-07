@@ -18,6 +18,7 @@ Item {
     property MediaManager mediaManager
     property PipeWireManager pipeWireManager
     property NotificationManager notificationManager
+    property XodusManager xodusManager
 
     signal closed()
 
@@ -43,7 +44,8 @@ Item {
         "Power",
         "Media",
         "Audio",
-        "Notifications"
+        "Notifications",
+        "Xodus"
     }
 
     // Modal backdrop
@@ -184,6 +186,12 @@ Item {
                             active: root.currentSection === "Notifications"
                             onClicked: root.currentSection = "Notifications"
                         }
+                        SectionNavButton {
+                            id: xodusBtn
+                            title: "Xodus"
+                            active: root.currentSection === "Xodus"
+                            onClicked: root.currentSection = "Xodus"
+                        }
                     }
                 }
             }
@@ -229,7 +237,8 @@ Item {
         "Power": powerPane,
         "Media": mediaPane,
         "Audio": audioPane,
-        "Notifications": notificationsPane
+        "Notifications": notificationsPane,
+        "Xodus": xodusPane
     }
 
     // Open on Updates when startAtUpdates is true
@@ -359,6 +368,14 @@ Item {
         NotificationPane {
             settings: root.settings
             notificationManager: root.notificationManager
+        }
+    }
+
+    Component {
+        id: xodusPane
+        XodusPane {
+            settings: root.settings
+            xodusManager: root.xodusManager
         }
     }
 
