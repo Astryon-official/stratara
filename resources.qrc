@@ -30,6 +30,10 @@
         <file>qml/components/NowPlayingSection.qml</file>
         <file>qml/components/HiddenAppDelegate.qml</file>
         <file>qml/components/SectionNavButton.qml</file>
+        <file>qml/components/NetworkPane.qml</file>
+        <file>qml/components/BluetoothPane.qml</file>
+        <file>qml/components/PowerPane.qml</file>
+        <file>qml/components/MediaPane.qml</file>
     </qresource>
 
     <qresource prefix="/icons">

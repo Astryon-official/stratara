@@ -113,6 +113,8 @@ LauncherWindow {
             height: 80
             glassBlur: settings.glassBlur
             glassBackdrop: glassBackdrop
+            networkManager: networkManager
+            mediaManager: mediaManager
         }
 
         // Center content area
@@ -144,6 +146,10 @@ LauncherWindow {
         updateChecker: updateChecker
         updateDownloader: updateDownloader
         updateInstaller: updateInstaller
+        networkManager: networkManager
+        bluetoothManager: bluetoothManager
+        powerManager: powerManager
+        mediaManager: mediaManager
         onClosed: {
             visible = false
         }

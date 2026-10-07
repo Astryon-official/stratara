@@ -83,6 +83,10 @@ set(SRCS
     src/system/UpdateDownloader.cpp
     src/system/UpdateInstaller.cpp
     src/system/InputManager.cpp
+    src/system/NetworkManager.cpp
+    src/system/BluetoothManager.cpp
+    src/system/PowerManager.cpp
+    src/system/MediaManager.cpp
     src/ui/LauncherWindow.cpp
 )
 

@@ -18,6 +18,10 @@
 #include "system/UpdateInstaller.h"
 #include "system/UpdateResult.h"
 #include "system/InputManager.h"
+#include "system/NetworkManager.h"
+#include "system/BluetoothManager.h"
+#include "system/PowerManager.h"
+#include "system/MediaManager.h"
 #include "ui/LauncherWindow.h"
 
 int main(int argc, char *argv[])
@@ -42,6 +46,10 @@ int main(int argc, char *argv[])
     qmlRegisterType<Stratara::System::UpdateDownloader>("Stratara.System", 1, 0, "UpdateDownloader");
     qmlRegisterType<Stratara::System::UpdateInstaller>("Stratara.System", 1, 0, "UpdateInstaller");
     qmlRegisterType<Stratara::System::InputManager>("Stratara.System", 1, 0, "InputManager");
+    qmlRegisterType<Stratara::System::NetworkManager>("Stratara.System", 1, 0, "NetworkManager");
+    qmlRegisterType<Stratara::System::BluetoothManager>("Stratara.System", 1, 0, "BluetoothManager");
+    qmlRegisterType<Stratara::System::PowerManager>("Stratara.System", 1, 0, "PowerManager");
+    qmlRegisterType<Stratara::System::MediaManager>("Stratara.System", 1, 0, "MediaManager");
     qmlRegisterType<Stratara::UI::LauncherWindow>("Stratara.UI", 1, 0, "LauncherWindow");
 
     // Register metatypes for signals/slots
@@ -61,6 +69,10 @@ int main(int argc, char *argv[])
     auto updateDownloader = std::make_unique<Stratara::System::UpdateDownloader>();
     auto updateInstaller = std::make_unique<Stratara::System::UpdateInstaller>();
     auto inputManager = std::make_unique<Stratara::System::InputManager>();
+    auto networkManager = std::make_unique<Stratara::System::NetworkManager>();
+    auto bluetoothManager = std::make_unique<Stratara::System::BluetoothManager>();
+    auto powerManager = std::make_unique<Stratara::System::PowerManager>();
+    auto mediaManager = std::make_unique<Stratara::System::MediaManager>();
 
     // Set up QML engine
     QQmlApplicationEngine engine;
@@ -80,6 +92,10 @@ int main(int argc, char *argv[])
     engine.rootContext()->setContextProperty("updateDownloader", updateDownloader.get());
     engine.rootContext()->setContextProperty("updateInstaller", updateInstaller.get());
     engine.rootContext()->setContextProperty("inputManager", inputManager.get());
+    engine.rootContext()->setContextProperty("networkManager", networkManager.get());
+    engine.rootContext()->setContextProperty("bluetoothManager", bluetoothManager.get());
+    engine.rootContext()->setContextProperty("powerManager", powerManager.get());
+    engine.rootContext()->setContextProperty("mediaManager", mediaManager.get());
 
     // Add image provider for app icons
     engine.addImageProvider("appicons", iconProvider.get());

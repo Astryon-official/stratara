@@ -12,6 +12,10 @@ Item {
     property UpdateChecker updateChecker
     property UpdateDownloader updateDownloader
     property UpdateInstaller updateInstaller
+    property NetworkManager networkManager
+    property BluetoothManager bluetoothManager
+    property PowerManager powerManager
+    property MediaManager mediaManager
 
     signal closed()
 
@@ -31,7 +35,11 @@ Item {
         "Home Setup",
         "Hidden Apps",
         "Updates",
-        "Diagnostics"
+        "Diagnostics",
+        "Network",
+        "Bluetooth",
+        "Power",
+        "Media"
     }
 
     // Modal backdrop
@@ -136,6 +144,30 @@ Item {
                             active: root.currentSection === "Diagnostics"
                             onClicked: root.currentSection = "Diagnostics"
                         }
+                        SectionNavButton {
+                            id: networkBtn
+                            title: "Network"
+                            active: root.currentSection === "Network"
+                            onClicked: root.currentSection = "Network"
+                        }
+                        SectionNavButton {
+                            id: bluetoothBtn
+                            title: "Bluetooth"
+                            active: root.currentSection === "Bluetooth"
+                            onClicked: root.currentSection = "Bluetooth"
+                        }
+                        SectionNavButton {
+                            id: powerBtn
+                            title: "Power"
+                            active: root.currentSection === "Power"
+                            onClicked: root.currentSection = "Power"
+                        }
+                        SectionNavButton {
+                            id: mediaBtn
+                            title: "Media"
+                            active: root.currentSection === "Media"
+                            onClicked: root.currentSection = "Media"
+                        }
                     }
                 }
             }
@@ -175,7 +207,11 @@ Item {
         "Home Setup": homeSetupPane,
         "Hidden Apps": hiddenAppsPane,
         "Updates": updatesPane,
-        "Diagnostics": diagnosticsPane
+        "Diagnostics": diagnosticsPane,
+        "Network": networkPane,
+        "Bluetooth": bluetoothPane,
+        "Power": powerPane,
+        "Media": mediaPane
     }
 
     // Open on Updates when startAtUpdates is true
@@ -257,6 +293,38 @@ Item {
         id: diagnosticsPane
         DiagnosticsPane {
             settings: root.settings
+        }
+    }
+
+    Component {
+        id: networkPane
+        NetworkPane {
+            settings: root.settings
+            networkManager: root.networkManager
+        }
+    }
+
+    Component {
+        id: bluetoothPane
+        BluetoothPane {
+            settings: root.settings
+            bluetoothManager: root.bluetoothManager
+        }
+    }
+
+    Component {
+        id: powerPane
+        PowerPane {
+            settings: root.settings
+            powerManager: root.powerManager
+        }
+    }
+
+    Component {
+        id: mediaPane
+        MediaPane {
+            settings: root.settings
+            mediaManager: root.mediaManager
         }
     }
 

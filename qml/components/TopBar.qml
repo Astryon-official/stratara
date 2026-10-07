@@ -7,6 +7,8 @@ Item {
     id: root
     property bool glassBlur: false
     property Item glassBackdrop: null
+    property NetworkManager networkManager
+    property MediaManager mediaManager
     property alias clock: clock
     property alias nowPlayingChip: nowPlayingChip
 
@@ -116,7 +118,7 @@ Item {
                 id: nowPlayingContainer
                 height: 56
                 radius: 28
-                visible: false // TODO: connect to MPRIS
+                visible: mediaManager && mediaManager.hasActivePlayer
                 color: glassBlur ? "transparent" : "#2a2a2c"
                 border.color: glassBlur ? "#ffffff33" : "transparent"
                 border.width: glassBlur ? 1 : 0
@@ -136,13 +138,13 @@ Item {
                     Column {
                         anchors.verticalCenter: parent.verticalCenter
                         Label {
-                            text: "Track Title"
+                            text: mediaManager.title
                             font.pixelSize: 16
                             font.weight: Font.Medium
                             color: "#ffffff"
                         }
                         Label {
-                            text: "Artist Name"
+                            text: mediaManager.artist
                             font.pixelSize: 13
                             color: "#aaaaaa"
                         }
@@ -162,17 +164,17 @@ Item {
                 height: 56
                 width: 56
                 radius: 28
-                visible: false // TODO: connect to NetworkManager
+                visible: networkManager && networkManager.connected
                 color: glassBlur ? "transparent" : "#2a2a2c"
-                border.color: glassBlur ? "#ffaa00" : "transparent"
+                border.color: networkManager.connectionType === "WiFi" ? (glassBlur ? "#44aa44" : "transparent") : (glassBlur ? "#ffaa00" : "transparent")
                 border.width: glassBlur ? 2 : 0
 
                 Image {
                     anchors.centerIn: parent
-                    source: "qrc:/icons/wifi-warning.svg"
+                    source: networkManager.connectionType === "WiFi" ? "qrc:/icons/wifi-warning.svg" : "qrc:/icons/wifi-warning.svg"
                     width: 22
                     height: 22
-                    color: "#ffaa00"
+                    color: networkManager.connectionType === "WiFi" ? "#44aa44" : "#ffaa00"
                 }
             }
 
