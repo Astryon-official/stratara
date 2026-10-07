@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Controls.TextField
 import QtQuick.Layouts
 
 Item {
@@ -219,12 +220,229 @@ Item {
                 anchors.margins: 12
             }
 
+Label {
+            visible: !(networkManager.connected && networkManager.connectionType === "Ethernet")
+            text: "No Ethernet connection detected"
+            font.pixelSize: 16
+            color: "#aaaaaa"
+        }
+        }
+
+        // Hotspot section
+        SettingsSection {
+            title: "Mobile Hotspot"
+            spacing: 16
+
+            Row {
+                Layout.fillWidth: true
+                spacing: 16
+
+                Column {
+                    spacing: 4
+                    Label {
+                        text: "Mobile Hotspot"
+                        font.pixelSize: 20
+                        font.weight: Font.Medium
+                        color: "#ffffff"
+                    }
+                    Label {
+                        text: networkManager.hotspotActive
+                            ? "Active: " + networkManager.hotspotSSID + " • " + networkManager.hotspotConnectedDevices + " device(s)"
+                            : "Disabled"
+                        font.pixelSize: 14
+                        color: networkManager.hotspotActive ? "#44aa44" : "#aaaaaa"
+                    }
+                }
+
+                Item { Layout.fillWidth: true }
+
+                SettingsSwitch {
+                    checked: networkManager.hotspotActive
+                    onToggled: {
+                        if (checked) {
+                            networkManager.enableHotspot(networkManager.hotspotSSID, networkManager.hotspotPassword)
+                        } else {
+                            networkManager.disableHotspot()
+                        }
+                    }
+                }
+            }
+
+            // Hotspot configuration
+            Rectangle {
+                visible: networkManager.hotspotActive
+                Layout.fillWidth: true
+                radius: 12
+                color: "#1a1a2e"
+                border.color: "#44aa44"
+                border.width: 1
+
+                Column {
+                    anchors.fill: parent
+                    anchors.margins: 16
+                    spacing: 12
+
+                    Row {
+                        spacing: 16
+                        Label {
+                            text: "SSID:"
+                            font.pixelSize: 16
+                            color: "#ffffff"
+                            Layout.preferredWidth: 80
+                        }
+                        TextField {
+                            Layout.fillWidth: true
+                            text: networkManager.hotspotSSID
+                            placeholderText: "Network name"
+                            onAccepted: networkManager.setHotspotConfig(text, networkManager.hotspotPassword)
+                        }
+                    }
+
+                    Row {
+                        spacing: 16
+                        Label {
+                            text: "Password:"
+                            font.pixelSize: 16
+                            color: "#ffffff"
+                            Layout.preferredWidth: 80
+                        }
+                        TextField {
+                            Layout.fillWidth: true
+                            text: networkManager.hotspotPassword
+                            placeholderText: "Leave empty for open network"
+                            echoMode: TextField.Password
+                            onAccepted: networkManager.setHotspotConfig(networkManager.hotspotSSID, text)
+                        }
+                    }
+
+                    Row {
+                        spacing: 16
+                        Label {
+                            text: "Devices:"
+                            font.pixelSize: 16
+                            color: "#ffffff"
+                            Layout.preferredWidth: 80
+                        }
+                        Label {
+                            text: networkManager.hotspotConnectedDevices + " connected"
+                            font.pixelSize: 16
+                            color: "#aaaaaa"
+                        }
+                    }
+                }
+            }
+        }
+
+        // VPN section
+        SettingsSection {
+            title: "VPN"
+            spacing: 16
+
+            Row {
+                Layout.fillWidth: true
+                spacing: 16
+
+                Column {
+                    spacing: 4
+                    Label {
+                        text: "VPN"
+                        font.pixelSize: 20
+                        font.weight: Font.Medium
+                        color: "#ffffff"
+                    }
+                    Label {
+                        text: networkManager.activeVPN ? "Connected to " + networkManager.activeVPN : "Disconnected"
+                        font.pixelSize: 14
+                        color: networkManager.activeVPN ? "#44aa44" : "#aaaaaa"
+                    }
+                }
+
+                Item { Layout.fillWidth: true }
+
+                Button {
+                    visible: networkManager.activeVPN
+                    text: "Disconnect"
+                    onClicked: networkManager.disconnectVPN()
+                }
+            }
+
+            // VPN connections list
+            ListView {
+                Layout.fillWidth: true
+                height: 200
+                model: networkManager.vpnConnections
+                spacing: 8
+                delegate: ItemDelegate {
+                    width: parent.width
+                    height: 72
+                    contentItem: Row {
+                        anchors.fill: parent
+                        spacing: 16
+
+                        Rectangle {
+                            width: 40
+                            height: 40
+                            radius: 20
+                            color: model.state === "activated" ? "#44aa44" : "#2a2a2c"
+                            border.color: "#ffffff22"
+                            border.width: 1
+
+                            Image {
+                                anchors.centerIn: parent
+                                source: "qrc:/icons/wifi-warning.svg"
+                                width: 20
+                                height: 20
+                                color: model.state === "activated" ? "#ffffff" : "#888888"
+                            }
+                        }
+
+                        Column {
+                            anchors.verticalCenter: parent.verticalCenter
+                            spacing: 2
+                            Label {
+                                text: model.name
+                                font.pixelSize: 18
+                                font.weight: Font.Medium
+                                color: "#ffffff"
+                            }
+                            Label {
+                                text: model.type + " • " + model.state
+                                font.pixelSize: 13
+                                color: "#888888"
+                            }
+                        }
+
+                        Item { Layout.fillWidth: true }
+
+                        Button {
+                            visible: model.state !== "activated"
+                            text: "Connect"
+                            onClicked: networkManager.connectVPN(model.id)
+                        }
+
+                        Button {
+                            visible: model.state === "activated"
+                            text: "Connected"
+                            enabled: false
+                        }
+                    }
+                }
+            }
+
             Label {
-                visible: !(networkManager.connected && networkManager.connectionType === "Ethernet")
-                text: "No Ethernet connection detected"
+                visible: networkManager.vpnConnections.length === 0
+                text: "No VPN connections configured"
                 font.pixelSize: 16
                 color: "#aaaaaa"
             }
+
+            Button {
+                text: "Refresh VPN Connections"
+                onClicked: networkManager.refreshVPNConnections()
+            }
+        }
+    }
+}
         }
 
         // Bluetooth section (placeholder - would use bluetoothManager)

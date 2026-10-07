@@ -48,10 +48,12 @@ InputManager::InputManager(QObject *parent)
 
     // Button repeat timer
     m_repeatTimer = new QTimer(this);
+    m_repeatTimer->setSingleShot(true);
     m_repeatTimer->setInterval(m_repeatRate);
     connect(m_repeatTimer, &QTimer::timeout, this, [this]() {
         if (m_lastButton != Button::Unknown) {
             emit buttonPressed(m_lastButton);
+            m_repeatTimer->start(m_repeatRate);
         }
     });
 }
@@ -328,28 +330,26 @@ void InputManager::processEvent(const input_event &ev)
     } else if (ev.type == EV_ABS) {
         // Axis event
         Axis axis = mapAxis(ev.code);
-        if (axis != Axis::LeftX) { // LeftX is 0, need to check properly
-            int idx = static_cast<int>(axis);
-            if (idx >= 0 && idx < 6) {
-                // Normalize axis value (-32768 to 32767 -> -1.0 to 1.0)
-                float value = 0.0f;
-                if (ev.code == ABS_X || ev.code == ABS_Y || ev.code == ABS_RX || ev.code == ABS_RY) {
-                    value = static_cast<float>(ev.value) / 32767.0f;
-                } else if (ev.code == ABS_Z || ev.code == ABS_RZ) {
-                    value = static_cast<float>(ev.value) / 32767.0f;
-                } else if (ev.code == ABS_HAT0X) {
-                    value = static_cast<float>(ev.value); // -1, 0, 1
-                } else if (ev.code == ABS_HAT0Y) {
-                    value = static_cast<float>(ev.value); // -1, 0, 1
-                }
+        int idx = static_cast<int>(axis);
+        if (idx >= 0 && idx < 6) {
+            // Normalize axis value (-32768 to 32767 -> -1.0 to 1.0)
+            float value = 0.0f;
+            if (ev.code == ABS_X || ev.code == ABS_Y || ev.code == ABS_RX || ev.code == ABS_RY) {
+                value = static_cast<float>(ev.value) / 32767.0f;
+            } else if (ev.code == ABS_Z || ev.code == ABS_RZ) {
+                value = static_cast<float>(ev.value) / 32767.0f;
+            } else if (ev.code == ABS_HAT0X) {
+                value = static_cast<float>(ev.value); // -1, 0, 1
+            } else if (ev.code == ABS_HAT0Y) {
+                value = static_cast<float>(ev.value); // -1, 0, 1
+            }
 
-                // Apply deadzone
-                if (std::abs(value) < 0.1f) value = 0.0f;
+            // Apply deadzone
+            if (std::abs(value) < 0.1f) value = 0.0f;
 
-                if (value != m_gamepad.axes[idx]) {
-                    m_gamepad.axes[idx] = value;
-                    emit axisChanged(axis, value);
-                }
+            if (value != m_gamepad.axes[idx]) {
+                m_gamepad.axes[idx] = value;
+                emit axisChanged(axis, value);
             }
         }
     }

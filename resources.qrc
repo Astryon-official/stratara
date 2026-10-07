@@ -34,6 +34,8 @@
         <file>qml/components/BluetoothPane.qml</file>
         <file>qml/components/PowerPane.qml</file>
         <file>qml/components/MediaPane.qml</file>
+        <file>qml/components/AudioPane.qml</file>
+        <file>qml/components/NotificationPane.qml</file>
     </qresource>
 
     <qresource prefix="/icons">

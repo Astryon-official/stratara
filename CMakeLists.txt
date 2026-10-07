@@ -87,6 +87,8 @@ set(SRCS
     src/system/BluetoothManager.cpp
     src/system/PowerManager.cpp
     src/system/MediaManager.cpp
+    src/system/PipeWireManager.cpp
+    src/system/NotificationManager.cpp
     src/ui/LauncherWindow.cpp
 )
 

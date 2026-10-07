@@ -22,6 +22,8 @@
 #include "system/BluetoothManager.h"
 #include "system/PowerManager.h"
 #include "system/MediaManager.h"
+#include "system/PipeWireManager.h"
+#include "system/NotificationManager.h"
 #include "ui/LauncherWindow.h"
 
 int main(int argc, char *argv[])
@@ -50,6 +52,8 @@ int main(int argc, char *argv[])
     qmlRegisterType<Stratara::System::BluetoothManager>("Stratara.System", 1, 0, "BluetoothManager");
     qmlRegisterType<Stratara::System::PowerManager>("Stratara.System", 1, 0, "PowerManager");
     qmlRegisterType<Stratara::System::MediaManager>("Stratara.System", 1, 0, "MediaManager");
+    qmlRegisterType<Stratara::System::PipeWireManager>("Stratara.System", 1, 0, "PipeWireManager");
+    qmlRegisterType<Stratara::System::NotificationManager>("Stratara.System", 1, 0, "NotificationManager");
     qmlRegisterType<Stratara::UI::LauncherWindow>("Stratara.UI", 1, 0, "LauncherWindow");
 
     // Register metatypes for signals/slots
@@ -73,6 +77,8 @@ int main(int argc, char *argv[])
     auto bluetoothManager = std::make_unique<Stratara::System::BluetoothManager>();
     auto powerManager = std::make_unique<Stratara::System::PowerManager>();
     auto mediaManager = std::make_unique<Stratara::System::MediaManager>();
+    auto pipeWireManager = std::make_unique<Stratara::System::PipeWireManager>();
+    auto notificationManager = std::make_unique<Stratara::System::NotificationManager>();
 
     // Set up QML engine
     QQmlApplicationEngine engine;
@@ -96,6 +102,8 @@ int main(int argc, char *argv[])
     engine.rootContext()->setContextProperty("bluetoothManager", bluetoothManager.get());
     engine.rootContext()->setContextProperty("powerManager", powerManager.get());
     engine.rootContext()->setContextProperty("mediaManager", mediaManager.get());
+    engine.rootContext()->setContextProperty("pipeWireManager", pipeWireManager.get());
+    engine.rootContext()->setContextProperty("notificationManager", notificationManager.get());
 
     // Add image provider for app icons
     engine.addImageProvider("appicons", iconProvider.get());

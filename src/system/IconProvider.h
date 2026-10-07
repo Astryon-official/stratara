@@ -3,7 +3,7 @@
 #include <QQuickImageProvider>
 #include <QIcon>
 #include <QPixmap>
-#include <QCache>
+#include <QImage>
 #include <QMutex>
 #include <QThread>
 #include <QFuture>
@@ -27,8 +27,7 @@ private:
     QString resolveIconPath(const QString &iconName) const;
 
     mutable QMutex m_mutex;
-    QCache<QString, QImage> m_cache;
-    static constexpr int MAX_CACHE_SIZE = 100; // MB
+    QImage m_placeholder;
 };
 
 } // namespace Stratara::System

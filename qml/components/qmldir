@@ -28,3 +28,9 @@ AppArtworkToggle.qml
 NowPlayingSection.qml
 HiddenAppDelegate.qml
 SectionNavButton.qml
+NetworkPane.qml
+BluetoothPane.qml
+PowerPane.qml
+MediaPane.qml
+AudioPane.qml
+NotificationPane.qml

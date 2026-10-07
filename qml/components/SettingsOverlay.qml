@@ -16,6 +16,8 @@ Item {
     property BluetoothManager bluetoothManager
     property PowerManager powerManager
     property MediaManager mediaManager
+    property PipeWireManager pipeWireManager
+    property NotificationManager notificationManager
 
     signal closed()
 
@@ -39,7 +41,9 @@ Item {
         "Network",
         "Bluetooth",
         "Power",
-        "Media"
+        "Media",
+        "Audio",
+        "Notifications"
     }
 
     // Modal backdrop
@@ -168,6 +172,18 @@ Item {
                             active: root.currentSection === "Media"
                             onClicked: root.currentSection = "Media"
                         }
+                        SectionNavButton {
+                            id: audioBtn
+                            title: "Audio"
+                            active: root.currentSection === "Audio"
+                            onClicked: root.currentSection = "Audio"
+                        }
+                        SectionNavButton {
+                            id: notificationsBtn
+                            title: "Notifications"
+                            active: root.currentSection === "Notifications"
+                            onClicked: root.currentSection = "Notifications"
+                        }
                     }
                 }
             }
@@ -211,7 +227,9 @@ Item {
         "Network": networkPane,
         "Bluetooth": bluetoothPane,
         "Power": powerPane,
-        "Media": mediaPane
+        "Media": mediaPane,
+        "Audio": audioPane,
+        "Notifications": notificationsPane
     }
 
     // Open on Updates when startAtUpdates is true
@@ -325,6 +343,22 @@ Item {
         MediaPane {
             settings: root.settings
             mediaManager: root.mediaManager
+        }
+    }
+
+    Component {
+        id: audioPane
+        AudioPane {
+            settings: root.settings
+            pipeWireManager: root.pipeWireManager
+        }
+    }
+
+    Component {
+        id: notificationsPane
+        NotificationPane {
+            settings: root.settings
+            notificationManager: root.notificationManager
         }
     }
 

@@ -54,7 +54,6 @@ void UpdateDownloader::startDownload(const QString &url)
     m_currentReply = m_networkManager->get(request);
 
     connect(m_currentReply, &QNetworkReply::downloadProgress, this, [this](qint64 received, qint64 total) {
-        QMutexLocker locker(&m_mutex);
         handleDownloadProgress(received, total);
     });
 
@@ -84,6 +83,8 @@ void UpdateDownloader::cancelDownload()
 
 void UpdateDownloader::handleDownloadProgress(qint64 bytesReceived, qint64 bytesTotal)
 {
+    QMutexLocker locker(&m_mutex);
+
     m_bytesDownloaded = bytesReceived;
     m_bytesTotal = bytesTotal;
 
