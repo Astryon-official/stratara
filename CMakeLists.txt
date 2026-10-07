@@ -82,6 +82,7 @@ set(SRCS
     src/system/UpdateChecker.cpp
     src/system/UpdateDownloader.cpp
     src/system/UpdateInstaller.cpp
+    src/system/InputManager.cpp
     src/ui/LauncherWindow.cpp
 )
 

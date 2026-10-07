@@ -17,6 +17,7 @@
 #include "system/UpdateDownloader.h"
 #include "system/UpdateInstaller.h"
 #include "system/UpdateResult.h"
+#include "system/InputManager.h"
 #include "ui/LauncherWindow.h"
 
 int main(int argc, char *argv[])
@@ -40,6 +41,7 @@ int main(int argc, char *argv[])
     qmlRegisterType<Stratara::System::UpdateChecker>("Stratara.System", 1, 0, "UpdateChecker");
     qmlRegisterType<Stratara::System::UpdateDownloader>("Stratara.System", 1, 0, "UpdateDownloader");
     qmlRegisterType<Stratara::System::UpdateInstaller>("Stratara.System", 1, 0, "UpdateInstaller");
+    qmlRegisterType<Stratara::System::InputManager>("Stratara.System", 1, 0, "InputManager");
     qmlRegisterType<Stratara::UI::LauncherWindow>("Stratara.UI", 1, 0, "LauncherWindow");
 
     // Register metatypes for signals/slots
@@ -58,6 +60,7 @@ int main(int argc, char *argv[])
     auto updateChecker = std::make_unique<Stratara::System::UpdateChecker>(updateStore.get());
     auto updateDownloader = std::make_unique<Stratara::System::UpdateDownloader>();
     auto updateInstaller = std::make_unique<Stratara::System::UpdateInstaller>();
+    auto inputManager = std::make_unique<Stratara::System::InputManager>();
 
     // Set up QML engine
     QQmlApplicationEngine engine;
@@ -76,6 +79,7 @@ int main(int argc, char *argv[])
     engine.rootContext()->setContextProperty("updateChecker", updateChecker.get());
     engine.rootContext()->setContextProperty("updateDownloader", updateDownloader.get());
     engine.rootContext()->setContextProperty("updateInstaller", updateInstaller.get());
+    engine.rootContext()->setContextProperty("inputManager", inputManager.get());
 
     // Add image provider for app icons
     engine.addImageProvider("appicons", iconProvider.get());
