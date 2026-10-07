@@ -15,6 +15,21 @@
         <file>qml/components/SettingsTextField.qml</file>
         <file>qml/components/SettingsFilePicker.qml</file>
         <file>qml/components/AppHideDelegate.qml</file>
+        <file>qml/components/AppearancePane.qml</file>
+        <file>qml/components/FrameArtPane.qml</file>
+        <file>qml/components/WeatherPane.qml</file>
+        <file>qml/components/HomeSetupPane.qml</file>
+        <file>qml/components/HiddenAppsPane.qml</file>
+        <file>qml/components/UpdatesPane.qml</file>
+        <file>qml/components/DiagnosticsPane.qml</file>
+        <file>qml/components/ToggleChip.qml</file>
+        <file>qml/components/PresetSwatch.qml</file>
+        <file>qml/components/PhotoSwatch.qml</file>
+        <file>qml/components/AppArtworkSection.qml</file>
+        <file>qml/components/AppArtworkToggle.qml</file>
+        <file>qml/components/NowPlayingSection.qml</file>
+        <file>qml/components/HiddenAppDelegate.qml</file>
+        <file>qml/components/SectionNavButton.qml</file>
     </qresource>
 
     <qresource prefix="/icons">
@@ -25,6 +40,9 @@
         <file alias="add.svg">assets/icons/add.svg</file>
         <file alias="close.svg">assets/icons/close.svg</file>
         <file alias="chevron-down.svg">assets/icons/chevron-down.svg</file>
+        <file alias="check.svg">assets/icons/check.svg</file>
+        <file alias="download.svg">assets/icons/download.svg</file>
+        <file alias="alert.svg">assets/icons/alert.svg</file>
     </qresource>
 
     <qresource prefix="/qt/qml">

@@ -36,6 +36,32 @@ LauncherWindow {
         id: appModel
     }
 
+    // Favorites store
+    FavoritesStore {
+        id: favoritesStore
+    }
+
+    // Update store
+    UpdateStore {
+        id: updateStore
+    }
+
+    // Update checker
+    UpdateChecker {
+        id: updateChecker
+        updateStore: updateStore
+    }
+
+    // Update downloader
+    UpdateDownloader {
+        id: updateDownloader
+    }
+
+    // Update installer
+    UpdateInstaller {
+        id: updateInstaller
+    }
+
     // Background wallpaper layer
     Rectangle {
         id: wallpaperLayer
@@ -113,6 +139,11 @@ LauncherWindow {
         visible: false
         settings: settings
         appModel: appModel
+        favoritesStore: favoritesStore
+        updateStore: updateStore
+        updateChecker: updateChecker
+        updateDownloader: updateDownloader
+        updateInstaller: updateInstaller
         onClosed: {
             visible = false
         }
