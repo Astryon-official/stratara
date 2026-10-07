@@ -1,0 +1,2 @@
+module Stratara.UI
+plugin stratara_ui

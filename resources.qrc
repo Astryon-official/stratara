@@ -1,0 +1,36 @@
+<RCC>
+    <qresource prefix="/qml">
+        <file>qml/main.qml</file>
+        <file>qml/components/TopBar.qml</file>
+        <file>qml/components/Dock.qml</file>
+        <file>qml/components/AppGrid.qml</file>
+        <file>qml/components/AppCard.qml</file>
+        <file>qml/components/LauncherContent.qml</file>
+        <file>qml/components/SettingsOverlay.qml</file>
+        <file>qml/components/SettingsPage.qml</file>
+        <file>qml/components/SettingsSection.qml</file>
+        <file>qml/components/SettingsSwitch.qml</file>
+        <file>qml/components/SettingsComboBox.qml</file>
+        <file>qml/components/SettingsSlider.qml</file>
+        <file>qml/components/SettingsTextField.qml</file>
+        <file>qml/components/SettingsFilePicker.qml</file>
+        <file>qml/components/AppHideDelegate.qml</file>
+    </qresource>
+
+    <qresource prefix="/icons">
+        <file alias="app-placeholder.svg">assets/icons/app-placeholder.svg</file>
+        <file alias="frame.svg">assets/icons/frame.svg</file>
+        <file alias="settings.svg">assets/icons/settings.svg</file>
+        <file alias="wifi-warning.svg">assets/icons/wifi-warning.svg</file>
+        <file alias="add.svg">assets/icons/add.svg</file>
+        <file alias="close.svg">assets/icons/close.svg</file>
+        <file alias="chevron-down.svg">assets/icons/chevron-down.svg</file>
+    </qresource>
+
+    <qresource prefix="/qt/qml">
+        <file alias="Stratara/Core/qmldir">qml/Stratara/Core/qmldir</file>
+        <file alias="Stratara/System/qmldir">qml/Stratara/System/qmldir</file>
+        <file alias="Stratara/UI/qmldir">qml/Stratara/UI/qmldir</file>
+        <file alias="Stratara/Components/qmldir">qml/components/qmldir</file>
+    </qresource>
+</RCC>

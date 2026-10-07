@@ -1,0 +1,15 @@
+module Stratara.Components
+TopBar.qml
+Dock.qml
+AppGrid.qml
+AppCard.qml
+LauncherContent.qml
+SettingsOverlay.qml
+SettingsPage.qml
+SettingsSection.qml
+SettingsSwitch.qml
+SettingsComboBox.qml
+SettingsSlider.qml
+SettingsTextField.qml
+SettingsFilePicker.qml
+AppHideDelegate.qml

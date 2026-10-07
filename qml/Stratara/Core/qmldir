@@ -1,0 +1,2 @@
+module Stratara.Core
+plugin stratara_core

@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Stratara
+GenericName=Living Room Shell
+Comment=A controller-first, TV-oriented Linux desktop experience
+Exec=@CMAKE_INSTALL_BINDIR@/stratara
+Icon=stratara
+Terminal=false
+Categories=System;DesktopEnvironment;
+StartupNotify=true
+X-Desktop-File-Install-Version=0.1.0
