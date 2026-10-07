@@ -76,6 +76,12 @@ set(SRCS
     src/core/Settings.cpp
     src/system/AppModel.cpp
     src/system/IconProvider.cpp
+    src/system/FavoritesStore.cpp
+    src/system/AppListCache.cpp
+    src/system/UpdateStore.cpp
+    src/system/UpdateChecker.cpp
+    src/system/UpdateDownloader.cpp
+    src/system/UpdateInstaller.cpp
     src/ui/LauncherWindow.cpp
 )
 

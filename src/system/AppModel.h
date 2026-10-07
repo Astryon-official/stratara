@@ -25,6 +25,9 @@ struct AppInfo {
     bool isTerminal = false;
     bool noDisplay = false;
     bool hidden = false;
+    // For cache compatibility
+    QString activityName;
+    bool isTvApp = false;
     Q_GADGET
     Q_PROPERTY(QString name MEMBER name)
     Q_PROPERTY(QString packageName MEMBER packageName)
@@ -35,6 +38,23 @@ struct AppInfo {
     Q_PROPERTY(bool isTerminal MEMBER isTerminal)
     Q_PROPERTY(bool noDisplay MEMBER noDisplay)
     Q_PROPERTY(bool hidden MEMBER hidden)
+    Q_PROPERTY(QString activityName MEMBER activityName)
+    Q_PROPERTY(bool isTvApp MEMBER isTvApp)
+
+public:
+    bool operator==(const AppInfo &other) const {
+        return name == other.name &&
+               packageName == other.packageName &&
+               execCommand == other.execCommand &&
+               iconName == other.iconName &&
+               comment == other.comment &&
+               categories == other.categories &&
+               isTerminal == other.isTerminal &&
+               noDisplay == other.noDisplay &&
+               hidden == other.hidden &&
+               activityName == other.activityName &&
+               isTvApp == other.isTvApp;
+    }
 };
 
 class AppModel : public QAbstractListModel
