@@ -1,0 +1,310 @@
+<?xml version="1.0" encoding="utf-8"?>
+<image schemaversion="7.5" name="Stratara-OS">
+  <description>Stratara OS - Linux-native living-room shell</description>
+  
+  <preferences>
+    <version>0.1.0</version>
+    <packagemanager>zypper</packagemanager>
+    <bootsplash-theme>stratara</bootsplash-theme>
+    <bootloader-theme>stratara</bootloader-theme>
+    <type>iso</type>
+    <profiles>default</profiles>
+    <rpm-excludedocs>true</rpm-excludedocs>
+    <keytable>us</keytable>
+    <timezone>UTC</timezone>
+    <locale>en_US.UTF-8</locale>
+    <filesystem>ext4</filesystem>
+  </preferences>
+
+  <!-- Repository configuration -->
+  <repository type="rpm-md" alias="stratara-base" priority="1">
+    <source path="obs://repositories/BaseOS"/>
+  </repository>
+  <repository type="rpm-md" alias="stratara-updates" priority="2">
+    <source path="obs://repositories/Updates"/>
+  </repository>
+  <repository type="rpm-md" alias="stratara-kde" priority="3">
+    <source path="obs://repositories/KDE"/>
+  </repository>
+
+  <!-- Packages to install -->
+  <packages type="image">
+    <!-- Base system -->
+    <package name="systemd"/>
+    <package name="systemd-sysvinit"/>
+    <package name="bash"/>
+    <package name="coreutils"/>
+    <package name="util-linux"/>
+    <package name="grep"/>
+    <package name="sed"/>
+    <package name="awk"/>
+    <package name="findutils"/>
+    <package name="tar"/>
+    <package name="gzip"/>
+    <package name="bzip2"/>
+    <package name="xz"/>
+    <package name="cpio"/>
+    <package name="rpm"/>
+    <package name="zypper"/>
+    
+    <!-- Kernel and firmware -->
+    <package name="kernel-default"/>
+    <package name="kernel-firmware-all"/>
+    <package name="dracut"/>
+    <package name="grub2"/>
+    <package name="grub2-efi"/>
+    <package name="grub2-branding-openSUSE"/>
+    <package name="shim"/>
+    <package name="mokutil"/>
+    
+    <!-- Graphics and Wayland -->
+    <package name="Mesa"/>
+    <package name="Mesa-dri"/>
+    <package name="Mesa-libEGL1"/>
+    <package name="Mesa-libGL1"/>
+    <package name="Mesa-libgbm1"/>
+    <package name="wayland"/>
+    <package name="wayland-protocols"/>
+    <package name="libwayland-client0"/>
+    <package name="libwayland-server0"/>
+    <package name="libwayland-egl1"/>
+    <package name="libdrm"/>
+    <package name="libdrm-amdgpu1"/>
+    <package name="libdrm-intel1"/>
+    <package name="libdrm-nouveau2"/>
+    <package name="libdrm-radeon1"/>
+    
+    <!-- KWin and Plasma -->
+    <package name="kwin"/>
+    <package name="kwin-wayland"/>
+    <package name="kwin-x11"/>
+    <package name="plasma-workspace"/>
+    <package name="plasma-workspace-wayland"/>
+    <package name="kwayland-integration"/>
+    <package name="kwayland-server"/>
+    <package name="kwin5"/>
+    <package name="kwrited"/>
+    <package name="kscreenlocker"/>
+    <package name="plasma-desktop"/>
+    <package name="systemsettings"/>
+    
+    <!-- Qt6 -->
+    <package name="qt6-qtbase"/>
+    <package name="qt6-qtdeclarative"/>
+    <package name="qt6-qtquickcontrols2"/>
+    <package name="qt6-qtsvg"/>
+    <package name="qt6-qtwayland"/>
+    <package name="qt6-qtshadertools"/>
+    
+    <!-- KDE Frameworks -->
+    <package name="kf6-kcoreaddons"/>
+    <package name="kf6-ki18n"/>
+    <package name="kf6-kconfig"/>
+    <package name="kf6-kconfigwidgets"/>
+    <package name="kf6-kdbusaddons"/>
+    <package name="kf6-kglobalaccel"/>
+    <package name="kf6-kwindowsystem"/>
+    <package name="kf6-kwayland"/>
+    <package name="kf6-kirigami2"/>
+    <package name="kf6-kiconthemes"/>
+    <package name="kf6-kitemviews"/>
+    <package name="kf6-kcompletion"/>
+    <package name="kf6-kcodecs"/>
+    <package name="kf6-kwidgetsaddons"/>
+    <package name="kf6-kguiaddons"/>
+    <package name="kf6-kio-core"/>
+    <package name="kf6-kio-filewidgets"/>
+    <package name="kf6-kio-widgets"/>
+    <package name="kf6-kio-gui"/>
+    <package name="kf6-solid"/>
+    <package name="kf6-sonnet"/>
+    <package name="kf6-ktextwidgets"/>
+    <package name="kf6-kxmlgui"/>
+    <package name="kf6-kbookmarks"/>
+    <package name="kf6-knotifications"/>
+    <package name="kf6-kjobwidgets"/>
+    <package name="kf6-kded"/>
+    <package name="kf6-kcrash"/>
+    <package name="kf6-kglobalaccel"/>
+    
+    <!-- System integration -->
+    <package name="NetworkManager"/>
+    <package name="NetworkManager-wifi"/>
+    <package name="NetworkManager-bluetooth"/>
+    <package name="bluez"/>
+    <package name="bluez-tools"/>
+    <package name="pipewire"/>
+    <package name="pipewire-pulseaudio"/>
+    <package name="pipewire-alsa"/>
+    <package name="pipewire-jack"/>
+    <package name="pipewire-v4l2"/>
+    <package name="wireplumber"/>
+    <package name="libpipewire-0_3-0"/>
+    <package name="spa-plugins"/>
+    <package name="gstreamer-plugin-pipewire"/>
+    
+    <!-- Power management -->
+    <package name="upower"/>
+    <package name="udisks2"/>
+    <package name="polkit"/>
+    <package name="polkit-default-privs-standard"/>
+    <package name="systemd-logind"/>
+    
+    <!-- Input -->
+    <package name="libinput"/>
+    <package name="libinput-tools"/>
+    <package name="qtvirtualkeyboard"/>
+    <package name="qtvirtualkeyboard-lang"/>
+    
+    <!-- Display -->
+    <package name="xorg-x11-server"/>
+    <package name="xorg-x11-server-wayland"/>
+    <package name="xwayland"/>
+    
+    <!-- Fonts -->
+    <package name="google-noto-sans-fonts"/>
+    <package name="google-noto-mono-fonts"/>
+    <package name="google-noto-emoji-fonts"/>
+    <package name="dejavu-fonts"/>
+    <package name="liberation-fonts"/>
+    
+    <!-- Stratara packages -->
+    <package name="stratara"/>
+    <package name="xodus"/>
+    
+    <!-- Calamares installer -->
+    <package name="calamares"/>
+    <package name="calamares-branding-stratara"/>
+    <package name="calamares-module-stratara-shell"/>
+    
+    <!-- Utilities -->
+    <package name="sudo"/>
+    <package name="vim"/>
+    <package name="nano"/>
+    <package name="htop"/>
+    <package name="curl"/>
+    <package name="wget"/>
+    <package name="iproute2"/>
+    <package name="iptables"/>
+    <package name="firewalld"/>
+    <package name="chrony"/>
+    <package name="haveged"/>
+    <package name="rng-tools"/>
+    
+    <!-- Hardware support -->
+    <package name="linux-firmware"/>
+    <package name="intel-ucode"/>
+    <package name="amd-ucode"/>
+    <package name="kernel-firmware-amdgpu"/>
+    <package name="kernel-firmware-i915"/>
+    <package name="kernel-firmware-nvidia"/>
+    <package name="kernel-firmware-network"/>
+    <package name="kernel-firmware-sound"/>
+    
+    <!-- Bootloader -->
+    <package name="grub2-efi"/>
+    <package name="grub2-branding-openSUSE"/>
+    <package name="shim"/>
+    <package name="mokutil"/>
+    <package name="efibootmgr"/>
+    
+    <!-- Initrd -->
+    <package name="dracut"/>
+    <package name="dracut-systemd"/>
+    <package name="dracut-network"/>
+    <package name="dracut-crypt"/>
+    <package name="dracut-lvm"/>
+  </packages>
+
+  <!-- Packages to remove (save space) -->
+  <packages type="delete">
+    <package name="plymouth"/>
+    <package name="plymouth-theme*"/>
+    <package name="initial-setup"/>
+    <package name="initial-setup-gui"/>
+    <package name="anaconda"/>
+    <package name="anaconda-gui"/>
+    <package name="anaconda-tui"/>
+    <package name="anaconda-install-env-deps"/>
+    <package name="lorax"/>
+    <package name="livemedia-creator"/>
+  </packages>
+
+  <!-- Users and groups -->
+  <users>
+    <user password="$6$rounds=656000$salt$hash" home="/home/stratara" name="stratara" groups="wheel,audio,video,network,input,kvm,render" shell="/bin/bash" auto_login="true"/>
+  </users>
+
+  <!-- Groups -->
+  <groups>
+    <group name="stratara" gid="1000"/>
+    <group name="kvm" gid="36"/>
+    <group name="render" gid="109"/>
+    <group name="input" gid="997"/>
+  </groups>
+
+  <!-- Systemd services -->
+  <systemd>
+    <services>
+      <service name="stratara.service" mode="user"/>
+      <service name="xodus.service" mode="system"/>
+      <service name="NetworkManager.service" mode="system"/>
+      <service name="bluetooth.service" mode="system"/>
+      <service name="pipewire.service" mode="system"/>
+      <service name="pipewire-pulse.service" mode="system"/>
+      <service name="dbus.service" mode="system"/>
+      <service name="sddm.service" mode="system"/>
+      <service name="chronyd.service" mode="system"/>
+      <service name="haveged.service" mode="system"/>
+      <service name="firewalld.service" mode="system"/>
+    </services>
+  </systemd>
+
+  <!-- Files to include -->
+  <files>
+    <file path="/etc/kwinrc" source="/etc/kwinrc"/>
+    <file path="/etc/kwinrulesrc" source="/etc/kwinrulesrc"/>
+    <file path="/usr/share/kwin/scripts/stratara-shell" source="/usr/share/kwin/scripts/stratara-shell"/>
+    <file path="/usr/share/wayland-sessions/stratara.desktop" source="/usr/share/wayland-sessions/stratara.desktop"/>
+    <file path="/usr/share/grub/themes/stratara" source="/usr/share/grub/themes/stratara"/>
+    <file path="/usr/lib/stratara/post-install.sh" source="/usr/lib/stratara/post-install.sh"/>
+    <file path="/usr/lib/stratara/oem-setup.sh" source="/usr/lib/stratara/oem-setup.sh"/>
+    <file path="/usr/lib/stratara/xodusctl" source="/usr/lib/stratara/xodusctl"/>
+  </files>
+
+  <!-- Boot configuration -->
+  <bootloader>
+    <grub2>
+      <theme>/usr/share/grub/themes/stratara</theme>
+      <timeout>5</timeout>
+      <resolution>1920x1080</resolution>
+      <cmdline>quiet splash=silent vt.global_cursor_default=0 loglevel=3 systemd.show_status=auto rd.udev.log_level=3</cmdline>
+    </grub2>
+  </bootloader>
+
+  <!-- ISO settings -->
+  <iso>
+    <label>Stratara-OS-0.1.0</label>
+    <publisher>Astryon</publisher>
+    <application>Stratara OS Installer</application>
+    <volid>Stratara-OS</volid>
+  </iso>
+
+  <!-- Profile: default -->
+  <profiles>
+    <profile name="default">
+      <description>Default Stratara OS installation</description>
+      <packages type="image">
+        <!-- Additional packages for default profile -->
+      </packages>
+    </profile>
+  </profiles>
+
+  <!-- Build options -->
+  <build>
+    <compression>xz</compression>
+    <checksum>sha256</checksum>
+    <threads>8</threads>
+    <keep-repositories>true</keep-repositories>
+  </build>
+</image>

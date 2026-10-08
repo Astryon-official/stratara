@@ -250,6 +250,18 @@ install(FILES
     DESTINATION ${CMAKE_INSTALL_DATADIR}/wayland-sessions
 )
 
+# ISO build configuration
+install(DIRECTORY
+    ${CMAKE_CURRENT_SOURCE_DIR}/installer/iso
+    DESTINATION ${CMAKE_INSTALL_DATADIR}/stratara/iso
+)
+
+# Install build script
+install(FILES
+    ${CMAKE_CURRENT_SOURCE_DIR}/installer/iso/build-iso.sh
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/stratara
+)
+
 # Desktop file generation
 configure_file(
     ${CMAKE_CURRENT_SOURCE_DIR}/stratara.desktop.in
