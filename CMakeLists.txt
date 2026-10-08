@@ -178,6 +178,28 @@ install(FILES resources.qrc DESTINATION ${CMAKE_INSTALL_DATADIR}/stratara)
 install(DIRECTORY qml/ DESTINATION ${CMAKE_INSTALL_DATADIR}/stratara/qml)
 install(FILES assets/icons/stratara.svg DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/scalable/apps/ RENAME stratara.svg)
 
+# systemd service units
+if(SYSTEMD_FOUND)
+    install(FILES
+        ${CMAKE_CURRENT_SOURCE_DIR}/installer/systemd/stratara.service
+        DESTINATION ${CMAKE_INSTALL_LIBDIR}/systemd/user
+    )
+    install(FILES
+        ${CMAKE_CURRENT_SOURCE_DIR}/installer/systemd/xodus.service
+        DESTINATION ${CMAKE_INSTALL_LIBDIR}/systemd/system
+    )
+endif()
+
+# D-Bus service files
+install(FILES
+    ${CMAKE_CURRENT_SOURCE_DIR}/installer/dbus-1/services/org.astyrion.Stratara.service
+    DESTINATION ${CMAKE_INSTALL_DATADIR}/dbus-1/services
+)
+install(FILES
+    ${CMAKE_CURRENT_SOURCE_DIR}/installer/dbus-1/system.d/org.astyrion.Xodus.conf
+    DESTINATION ${CMAKE_INSTALL_SYSCONFDIR}/dbus-1/system.d
+)
+
 # Desktop file generation
 configure_file(
     ${CMAKE_CURRENT_SOURCE_DIR}/stratara.desktop.in

@@ -1,0 +1,38 @@
+[Unit]
+Description=Stratara Living-Room Shell
+Documentation=https://github.com/Astryon-official/Stratara
+After=graphical-session.target wayland-display.service
+Wants=graphical-session.target wayland-display.service
+Requires=dbus.socket
+
+[Service]
+Type=exec
+ExecStartPre=/usr/bin/sleep 2
+ExecStart=/usr/bin/stratara
+Restart=on-failure
+RestartSec=5
+StartLimitIntervalSec=60
+StartLimitBurst=3
+
+# Wayland environment
+Environment=XDG_SESSION_TYPE=wayland
+Environment=QT_QPA_PLATFORM=wayland
+Environment=QT_WAYLAND_DISABLE_WINDOWDECORATION=1
+
+# User session integration
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=stratara
+
+# Resource limits for shell
+LimitNOFILE=65536
+LimitNPROC=32768
+
+# Security hardening (relaxed for shell access to system D-Bus)
+NoNewPrivileges=false
+PrivateTmp=true
+ProtectSystem=strict
+ReadWritePaths=/run/user/%U/stratara /home/%u/.config/stratara /home/%u/.local/share/stratara
+
+[Install]
+WantedBy=graphical-session.target

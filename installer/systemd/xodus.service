@@ -1,0 +1,43 @@
+[Unit]
+Description=Xodus System Integration Service
+Documentation=https://github.com/Astryon-official/Stratara
+After=systemd-udevd.service dbus.socket network-online.target
+Wants=network-online.target
+Requires=dbus.socket
+
+[Service]
+Type=dbus
+BusName=org.astyrion.Xodus
+ExecStart=/usr/bin/xodus --systemd
+Restart=on-failure
+RestartSec=3
+StartLimitIntervalSec=60
+StartLimitBurst=5
+
+# System D-Bus access
+Environment=DBUS_SYSTEM_BUS_ADDRESS=unix:path=/run/dbus/system_bus_socket
+
+# Security hardening
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictRealtime=true
+RestrictSUIDSGID=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+RestrictAddressFamilies=AF_UNIX AF_NETLINK
+
+# Allow D-Bus and systemd access
+ReadWritePaths=/etc/xodus /var/lib/xodus /run/xodus
+BindPaths=/run/dbus/system_bus_socket
+
+# Capabilities for system management
+AmbientCapabilities=CAP_DAC_OVERRIDE CAP_SYS_ADMIN CAP_SYS_RESOURCE CAP_DAC_READ_SEARCH
+
+[Install]
+WantedBy=multi-user.target
+Also=dbus.socket
