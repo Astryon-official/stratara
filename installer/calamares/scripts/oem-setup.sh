@@ -4,6 +4,20 @@
 
 set -euo pipefail
 
+# Parse arguments
+DATA_FILE=""
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --data-file)
+            DATA_FILE="$2"
+            shift 2
+            ;;
+        *)
+            shift
+            ;;
+    esac
+done
+
 # Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -26,6 +40,42 @@ log_warning() {
 log_error() {
     echo -e "${RED}[ERROR]${NC} $1"
 }
+
+# Load data from JSON file if provided
+SETUP_HOSTNAME=""
+SETUP_USERNAME="stratara"
+SETUP_PASSWORD=""
+SETUP_TIMEZONE="UTC"
+SETUP_LOCALE="en_US.UTF-8"
+SETUP_KEYBOARD="us"
+SETUP_WIFI_SSID=""
+SETUP_WIFI_PASSWORD=""
+SETUP_USE_ETHERNET=false
+SETUP_ENROLL_XODUS=true
+SETUP_XODUS_NAME="Stratara Living Room"
+SETUP_XODUS_TYPE="living-room-shell"
+SETUP_DISPLAY_MODE="1920x1080"
+
+if [[ -n "$DATA_FILE" && -f "$DATA_FILE" ]]; then
+    log_info "Loading setup data from $DATA_FILE"
+    if command -v jq &> /dev/null; then
+        SETUP_HOSTNAME=$(jq -r '.hostname // ""' "$DATA_FILE")
+        SETUP_USERNAME=$(jq -r '.username // "stratara"' "$DATA_FILE")
+        SETUP_PASSWORD=$(jq -r '.password // ""' "$DATA_FILE")
+        SETUP_TIMEZONE=$(jq -r '.timezone // "UTC"' "$DATA_FILE")
+        SETUP_LOCALE=$(jq -r '.locale // "en_US.UTF-8"' "$DATA_FILE")
+        SETUP_KEYBOARD=$(jq -r '.keyboardLayout // "us"' "$DATA_FILE")
+        SETUP_WIFI_SSID=$(jq -r '.wifiSsid // ""' "$DATA_FILE")
+        SETUP_WIFI_PASSWORD=$(jq -r '.wifiPassword // ""' "$DATA_FILE")
+        SETUP_USE_ETHERNET=$(jq -r '.useEthernet // false' "$DATA_FILE")
+        SETUP_ENROLL_XODUS=$(jq -r '.enrollXodus // true' "$DATA_FILE")
+        SETUP_XODUS_NAME=$(jq -r '.xodusName // "Stratara Living Room"' "$DATA_FILE")
+        SETUP_XODUS_TYPE=$(jq -r '.xodusType // "living-room-shell"' "$DATA_FILE")
+        SETUP_DISPLAY_MODE=$(jq -r '.displayMode // "1920x1080"' "$DATA_FILE")
+    else
+        log_warning "jq not found, using defaults"
+    fi
+fi
 
 # Check if already run
 OEM_MARKER="/var/lib/stratara/oem-setup-complete"
@@ -51,22 +101,26 @@ if [[ ! -f /etc/machine-id ]]; then
     systemd-machine-id-setup
 fi
 
-# Generate hostname
-HOSTNAME="stratara-$(cat /etc/machine-id | cut -c1-8)"
+# Set hostname
+if [[ -n "$SETUP_HOSTNAME" ]]; then
+    HOSTNAME="$SETUP_HOSTNAME"
+else
+    HOSTNAME="stratara-$(cat /etc/machine-id | cut -c1-8)"
+fi
 log_info "Setting hostname to: $HOSTNAME"
 hostnamectl set-hostname "$HOSTNAME"
 
 # Set up timezone
-log_info "Setting timezone to UTC..."
-timedatectl set-timezone UTC
+log_info "Setting timezone to: $SETUP_TIMEZONE"
+timedatectl set-timezone "$SETUP_TIMEZONE"
 
 # Set up locale
-log_info "Setting locale to en_US.UTF-8..."
-localectl set-locale LANG=en_US.UTF-8
+log_info "Setting locale to: $SETUP_LOCALE"
+localectl set-locale LANG="$SETUP_LOCALE"
 
 # Set up keyboard
-log_info "Setting keyboard layout to US..."
-localectl set-keymap us
+log_info "Setting keyboard layout to: $SETUP_KEYBOARD"
+localectl set-keymap "$SETUP_KEYBOARD"
 
 # Configure NetworkManager
 log_info "Configuring NetworkManager..."
@@ -75,6 +129,12 @@ systemctl start NetworkManager.service
 
 # Wait for NetworkManager to be ready
 sleep 2
+
+# Connect to WiFi if provided
+if [[ "$SETUP_USE_ETHERNET" != "true" && -n "$SETUP_WIFI_SSID" && -n "$SETUP_WIFI_PASSWORD" ]]; then
+    log_info "Connecting to WiFi: $SETUP_WIFI_SSID"
+    nmcli device wifi connect "$SETUP_WIFI_SSID" password "$SETUP_WIFI_PASSWORD" || log_warning "WiFi connection failed, will retry later"
+fi
 
 # Configure Bluetooth
 log_info "Configuring Bluetooth..."
@@ -95,29 +155,36 @@ systemctl start xodus.service
 # Wait for Xodus to be ready
 sleep 3
 
-# Enroll with Xodus
-log_info "Enrolling with Xodus..."
-if command -v xodusctl &> /dev/null; then
-    xodusctl enroll --name "Stratara Living Room" --type "living-room-shell" || log_warning "Xodus enrollment failed, will retry on next boot"
-else
-    log_warning "xodusctl not found, skipping Xodus enrollment"
+# Enroll with Xodus if enabled
+if [[ "$SETUP_ENROLL_XODUS" == "true" ]]; then
+    log_info "Enrolling with Xodus as: $SETUP_XODUS_NAME ($SETUP_XODUS_TYPE)"
+    if command -v xodusctl &> /dev/null; then
+        xodusctl enroll --name "$SETUP_XODUS_NAME" --type "$SETUP_XODUS_TYPE" || log_warning "Xodus enrollment failed, will retry on next boot"
+    else
+        log_warning "xodusctl not found, skipping Xodus enrollment"
+    fi
 fi
 
-# Create default user if not exists
-DEFAULT_USER="stratara"
-if ! id "$DEFAULT_USER" &>/dev/null; then
-    log_info "Creating default user: $DEFAULT_USER"
-    useradd -m -G wheel,audio,video,network,input,kvm,render -s /bin/bash "$DEFAULT_USER"
+# Create user with custom username
+if ! id "$SETUP_USERNAME" &>/dev/null; then
+    log_info "Creating user: $SETUP_USERNAME"
+    useradd -m -G wheel,audio,video,network,input,kvm,render -s /bin/bash "$SETUP_USERNAME"
+    
+    # Set password if provided
+    if [[ -n "$SETUP_PASSWORD" ]]; then
+        echo "$SETUP_USERNAME:$SETUP_PASSWORD" | chpasswd
+        log_info "Password set for user $SETUP_USERNAME"
+    fi
     
     # Set up auto-login for SDDM/GDM
-    log_info "Configuring auto-login for $DEFAULT_USER..."
+    log_info "Configuring auto-login for $SETUP_USERNAME..."
     
     # For SDDM
     if [[ -f /etc/sddm.conf ]]; then
         mkdir -p /etc/sddm.conf.d
         cat > /etc/sddm.conf.d/autologin.conf << EOF
 [Autologin]
-User=$DEFAULT_USER
+User=$SETUP_USERNAME
 Session=wayland
 Relogin=false
 EOF
@@ -126,42 +193,42 @@ EOF
     # For GDM
     if [[ -f /etc/gdm/custom.conf ]]; then
         sed -i "s/^#  AutomaticLoginEnable =.*/  AutomaticLoginEnable = true/" /etc/gdm/custom.conf
-        sed -i "s/^#  AutomaticLogin =.*/  AutomaticLogin = $DEFAULT_USER/" /etc/gdm/custom.conf
+        sed -i "s/^#  AutomaticLogin =.*/  AutomaticLogin = $SETUP_USERNAME/" /etc/gdm/custom.conf
     fi
 fi
 
 # Set up Stratara user directories
 log_info "Setting up Stratara user directories..."
-mkdir -p "/home/$DEFAULT_USER/.config/stratara"
-mkdir -p "/home/$DEFAULT_USER/.local/share/stratara"
-mkdir -p "/home/$DEFAULT_USER/.cache/stratara"
+mkdir -p "/home/$SETUP_USERNAME/.config/stratara"
+mkdir -p "/home/$SETUP_USERNAME/.local/share/stratara"
+mkdir -p "/home/$SETUP_USERNAME/.cache/stratara"
 
 # Copy default config
 if [[ -f /usr/share/stratara/default-config.ini ]]; then
-    cp /usr/share/stratara/default-config.ini "/home/$DEFAULT_USER/.config/stratara/config.ini"
-    chown -R "$DEFAULT_USER:$DEFAULT_USER" "/home/$DEFAULT_USER/.config/stratara"
+    cp /usr/share/stratara/default-config.ini "/home/$SETUP_USERNAME/.config/stratara/config.ini"
+    chown -R "$SETUP_USERNAME:$SETUP_USERNAME" "/home/$SETUP_USERNAME/.config/stratara"
 fi
 
 # Configure KWin for the user
 log_info "Configuring KWin for user..."
-mkdir -p "/home/$DEFAULT_USER/.config"
+mkdir -p "/home/$SETUP_USERNAME/.config"
 if [[ -f /etc/kwin/kwinrc ]]; then
-    cp /etc/kwin/kwinrc "/home/$DEFAULT_USER/.config/kwinrc"
-    chown "$DEFAULT_USER:$DEFAULT_USER" "/home/$DEFAULT_USER/.config/kwinrc"
+    cp /etc/kwin/kwinrc "/home/$SETUP_USERNAME/.config/kwinrc"
+    chown "$SETUP_USERNAME:$SETUP_USERNAME" "/home/$SETUP_USERNAME/.config/kwinrc"
 fi
 if [[ -f /etc/kwin/windowrulesrc ]]; then
-    cp /etc/kwin/windowrulesrc "/home/$DEFAULT_USER/.config/windowrulesrc"
-    chown "$DEFAULT_USER:$DEFAULT_USER" "/home/$DEFAULT_USER/.config/windowrulesrc"
+    cp /etc/kwin/windowrulesrc "/home/$SETUP_USERNAME/.config/windowrulesrc"
+    chown "$SETUP_USERNAME:$SETUP_USERNAME" "/home/$SETUP_USERNAME/.config/windowrulesrc"
 fi
 
 # Enable Stratara user service
 log_info "Enabling Stratara user service..."
-systemctl --user --machine="$DEFAULT_USER@" enable stratara.service 2>/dev/null || true
+systemctl --user --machine="$SETUP_USERNAME@" enable stratara.service 2>/dev/null || true
 
 # Set up XDG autostart for Stratara
 log_info "Setting up Stratara autostart..."
-mkdir -p "/home/$DEFAULT_USER/.config/autostart"
-cat > "/home/$DEFAULT_USER/.config/autostart/stratara.desktop" << EOF
+mkdir -p "/home/$SETUP_USERNAME/.config/autostart"
+cat > "/home/$SETUP_USERNAME/.config/autostart/stratara.desktop" << EOF
 [Desktop Entry]
 Type=Application
 Name=Stratara Shell
@@ -171,7 +238,7 @@ NoDisplay=false
 X-GNOME-Autostart-enabled=true
 OnlyShowIn=KDE;XFCE;GNOME;
 EOF
-chown "$DEFAULT_USER:$DEFAULT_USER" "/home/$DEFAULT_USER/.config/autostart/stratara.desktop"
+chown "$SETUP_USERNAME:$SETUP_USERNAME" "/home/$SETUP_USERNAME/.config/autostart/stratara.desktop"
 
 # Configure display settings
 log_info "Configuring display..."

@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=Stratara Setup
+GenericName=First-Boot Setup Wizard
+Comment=Configure your Stratara system
+Exec=stratara-oem-setup
+Icon=stratara
+Terminal=false
+Categories=System;Settings;
+StartupNotify=true
+OnlyShowIn=KDE;GNOME;XFCE;
+X-KDE-StartupNotify=true

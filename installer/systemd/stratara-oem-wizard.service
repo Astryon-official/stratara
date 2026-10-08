@@ -1,0 +1,19 @@
+[Unit]
+Description=Stratara OEM Setup Wizard
+Documentation=man:stratara-oem-setup(1)
+After=graphical-session.target
+Wants=graphical-session.target
+ConditionPathExists=!/var/lib/stratara/oem-setup-complete
+ConditionKernelCommandLine=|oem
+ConditionKernelCommandLine=|stratara.oem
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/stratara-oem-setup
+Environment=QT_QPA_PLATFORM=wayland
+Environment=QT_WAYLAND_DISABLE_WINDOWDECORATION=1
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=graphical-session.target

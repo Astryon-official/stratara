@@ -36,6 +36,12 @@
         <file>qml/components/MediaPane.qml</file>
         <file>qml/components/AudioPane.qml</file>
         <file>qml/components/NotificationPane.qml</file>
+        <file>qml/oem/OemSetupMain.qml</file>
+        <file>qml/oem/WelcomeStep.qml</file>
+        <file>qml/oem/NetworkStep.qml</file>
+        <file>qml/oem/AccountStep.qml</file>
+        <file>qml/oem/XodusStep.qml</file>
+        <file>qml/oem/DisplayStep.qml</file>
     </qresource>
 
     <qresource prefix="/icons">
@@ -56,5 +62,6 @@
         <file alias="Stratara/System/qmldir">qml/Stratara/System/qmldir</file>
         <file alias="Stratara/UI/qmldir">qml/Stratara/UI/qmldir</file>
         <file alias="Stratara/Components/qmldir">qml/components/qmldir</file>
+        <file alias="Stratara/OemSetup/qmldir">qml/oem/qmldir</file>
     </qresource>
 </RCC>

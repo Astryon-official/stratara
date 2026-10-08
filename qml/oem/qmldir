@@ -1,0 +1,8 @@
+module Stratara.OemSetup
+
+OemSetupMain.qml
+WelcomeStep.qml
+NetworkStep.qml
+AccountStep.qml
+XodusStep.qml
+DisplayStep.qml

@@ -99,6 +99,13 @@ set(XODUS_SRCS
     src/xodus/XodusService.cpp
 )
 
+# OEM Setup
+set(OEM_SRCS
+    src/oem/main.cpp
+    src/oem/OemRunner.cpp
+    src/oem/OemSetupPlugin.cpp
+)
+
 # Resources
 qt_add_resources(STRATARA_RESOURCES resources.qrc)
 
@@ -172,8 +179,25 @@ target_link_libraries(xodus PRIVATE
 )
 target_compile_definitions(xodus PRIVATE HAVE_SYSTEMD)
 
+# OEM Setup executable
+add_executable(stratara-oem-setup ${OEM_SRCS})
+target_link_libraries(stratara-oem-setup PRIVATE
+    Qt6::Core
+    Qt6::Gui
+    Qt6::Qml
+    Qt6::Quick
+    Qt6::QuickControls2
+    Qt6::QuickTemplates2
+    Qt6::Svg
+    Qt6::Network
+    Qt6::DBus
+    ${GLIB2_LIBRARIES}
+    ${GIO2_LIBRARIES}
+    ${GIO_UNIX2_LIBRARIES}
+)
+
 # Install
-install(TARGETS stratara xodus DESTINATION ${CMAKE_INSTALL_BINDIR})
+install(TARGETS stratara xodus stratara-oem-setup DESTINATION ${CMAKE_INSTALL_BINDIR})
 install(FILES resources.qrc DESTINATION ${CMAKE_INSTALL_DATADIR}/stratara)
 install(DIRECTORY qml/ DESTINATION ${CMAKE_INSTALL_DATADIR}/stratara/qml)
 install(FILES assets/icons/stratara.svg DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/scalable/apps/ RENAME stratara.svg)
@@ -182,6 +206,8 @@ install(FILES assets/icons/stratara.svg DESTINATION ${CMAKE_INSTALL_DATADIR}/ico
 if(SYSTEMD_FOUND)
     install(FILES
         ${CMAKE_CURRENT_SOURCE_DIR}/installer/systemd/stratara.service
+        ${CMAKE_CURRENT_SOURCE_DIR}/installer/systemd/stratara-oem-setup.service
+        ${CMAKE_CURRENT_SOURCE_DIR}/installer/systemd/stratara-oem-wizard.service
         DESTINATION ${CMAKE_INSTALL_LIBDIR}/systemd/user
     )
     install(FILES
@@ -269,3 +295,7 @@ configure_file(
     @ONLY
 )
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/stratara.desktop DESTINATION ${CMAKE_INSTALL_DATADIR}/applications)
+install(FILES
+    ${CMAKE_CURRENT_SOURCE_DIR}/installer/stratara-oem-setup.desktop
+    DESTINATION ${CMAKE_INSTALL_DATADIR}/applications
+)

@@ -1,0 +1,19 @@
+[Unit]
+Description=Stratara OEM First-Boot Setup
+Documentation=man:stratara-oem-setup(1)
+DefaultDependencies=no
+After=systemd-remount-fs.service systemd-sysusers.service
+Before=graphical.target
+ConditionPathExists=!/var/lib/stratara/oem-setup-complete
+ConditionKernelCommandLine=|oem
+ConditionKernelCommandLine=|stratara.oem
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/lib/stratara/oem-setup.sh
+StandardOutput=journal+console
+StandardError=journal+console
+
+[Install]
+WantedBy=graphical.target
