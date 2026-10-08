@@ -200,6 +200,22 @@ install(FILES
     DESTINATION ${CMAKE_INSTALL_SYSCONFDIR}/dbus-1/system.d
 )
 
+# KWin configuration
+install(FILES
+    ${CMAKE_CURRENT_SOURCE_DIR}/installer/kwin/kwinrc
+    DESTINATION ${CMAKE_INSTALL_SYSCONFDIR}
+    RENAME kwinrc
+)
+install(FILES
+    ${CMAKE_CURRENT_SOURCE_DIR}/installer/kwin/windowrulesrc
+    DESTINATION ${CMAKE_INSTALL_SYSCONFDIR}
+    RENAME kwinrulesrc
+)
+install(DIRECTORY
+    ${CMAKE_CURRENT_SOURCE_DIR}/installer/kwin/scripts/stratara-shell
+    DESTINATION ${CMAKE_INSTALL_DATADIR}/kwin/scripts
+)
+
 # Desktop file generation
 configure_file(
     ${CMAKE_CURRENT_SOURCE_DIR}/stratara.desktop.in

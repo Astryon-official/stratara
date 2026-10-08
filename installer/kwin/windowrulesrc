@@ -1,0 +1,35 @@
+# Stratara KWin Window Rules
+# These rules ensure the Stratara shell window behaves correctly as a full-screen TV shell
+
+[General]
+count=1
+
+[Rule-0]
+Description=Stratara Shell - Full Screen TV Shell
+windowclass=stratara
+windowrole=
+windowtype=NormalDialog
+# Force full screen
+maximize=true
+maximizeHorizontally=true
+maximizeVertically=true
+# No decorations
+decorated=false
+# Keep above other windows
+keepAbove=true
+# Skip taskbar
+skipTaskbar=true
+skipPager=true
+# No focus stealing
+noFocusStealing=true
+# Place on all desktops
+onAllDesktops=true
+# No border
+noBorder=true
+# Fullscreen
+fullscreen=true
+# Input method
+inputMethod=qtvirtualkeyboard
+# Opacity
+opacityActive=1.0
+opacityInactive=1.0

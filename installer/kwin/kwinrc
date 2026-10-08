@@ -1,0 +1,123 @@
+# Stratara KWin Configuration
+# This configuration sets up KWin for the Stratara living-room shell experience
+
+[Compositor]
+# Enable compositor
+Enabled=true
+# Use OpenGL for rendering
+OpenGLIsUnsafe=false
+# VSync for smooth animations
+VSync=true
+# Allow tearing for lower latency (TV mode)
+AllowTearing=false
+# Rendering backend
+Backend=OpenGL
+# Scale method for high-DPI
+ScaleMethod=Linear
+# Refresh rate - match TV
+RefreshRate=60
+
+[Windows]
+# Borderless maximized windows for full-screen shell
+BorderlessMaximizedWindows=true
+# Electric borders for edge gestures
+ElectricBorderMaximize=false
+ElectricBorderCornerRatio=0.25
+# Focus policy - click to focus for controller navigation
+FocusPolicy=ClickToFocus
+# No focus stealing
+FocusStealingPreventionLevel=1
+# Window placement - center for TV
+Placement=Centered
+# No window decorations for shell
+DecorationButtons=0
+DecorationButtonsLeft=
+DecorationButtonsRight=
+
+[Effect-DesktopGrid]
+# Disable desktop grid effect
+enabled=false
+
+[Effect-WindowView]
+# Disable window view effect
+enabled=false
+
+[Effect-PresentWindows]
+# Disable present windows effect
+enabled=false
+
+[Effect-SlideBack]
+# Disable slide back effect
+enabled=false
+
+[Effect-KWin4_effect_minimize]
+# Disable minimize animation
+enabled=false
+
+[Effect-KWin4_effect_maximize]
+# Disable maximize animation
+enabled=false
+
+[Effect-Translucency]
+# Enable translucency for glass effects
+enabled=true
+# Glow settings for TV UI
+GlowEnabled=true
+GlowColor=0,170,255
+GlowSize=12
+
+[Effect-Blur]
+# Enable blur for frosted glass
+enabled=true
+# Blur strength
+Strength=32
+# Blur passes
+Passes=2
+# Noise reduction
+NoiseReduction=true
+
+[Effect-BackgroundContrast]
+# Increase contrast for readability on TV
+enabled=true
+Intensity=0.3
+
+[Effect-ColorTemperature]
+# Night mode support
+enabled=true
+TemperatureNight=4500
+TemperatureDay=6500
+
+[Effect-DimInactive]
+# Dim inactive windows
+enabled=false
+
+[Effect-DimScreen]
+# Dim screen for power saving
+enabled=true
+Timeout=300
+
+[Effect-ScreenEdge]
+# Screen edges for TV remote navigation
+enabled=true
+# Top edge - settings
+TopEdge=1
+TopEdgeAction=ShowDesktop
+# Bottom edge - app drawer
+BottomEdge=1
+BottomEdgeAction=ShowDashboard
+# Left edge - navigation
+LeftEdge=1
+LeftEdgeAction=SwitchDesktopLeft
+# Right edge - navigation
+RightEdge=1
+RightEdgeAction=SwitchDesktopRight
+
+[TabBox]
+# Alt-tab style switcher for TV
+LayoutName=org.kde.breeze.desktop
+ShowDesktop=true
+ShowDesktopName=Desktop
+
+[Scripts]
+# Load Stratara KWin script
+stratara-shell=true

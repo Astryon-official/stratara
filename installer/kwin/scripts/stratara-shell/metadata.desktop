@@ -1,0 +1,15 @@
+[Desktop Entry]
+Name=Stratara Shell
+Comment=KWin script for Stratara living-room shell window management
+Type=Service
+X-KDE-ServiceTypes=KWin/Script
+X-KDE-PluginInfo-Author=Astryon
+X-KDE-PluginInfo-Email=dev@astyrion.org
+X-KDE-PluginInfo-Name=stratara-shell
+X-KDE-PluginInfo-Version=0.1.0
+X-KDE-PluginInfo-Website=https://github.com/Astryon-official/Stratara
+X-KDE-PluginInfo-License=GPL-3.0-or-later
+X-KDE-PluginInfo-EnabledByDefault=true
+X-KDE-PluginInfo-Category=Window Management
+X-KWin-Version=6.0
+X-KWin-Script-File=stratara-shell.js
