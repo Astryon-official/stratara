@@ -12,4 +12,4 @@ X-KDE-PluginInfo-License=GPL-3.0-or-later
 X-KDE-PluginInfo-EnabledByDefault=true
 X-KDE-PluginInfo-Category=Window Management
 X-KWin-Version=6.0
-X-KWin-Script-File=stratara-shell.js
+X-KWin-Script-File=main.js

@@ -237,6 +237,12 @@ install(FILES
     DESTINATION ${CMAKE_INSTALL_SYSCONFDIR}
     RENAME kwinrulesrc
 )
+# Also install to /usr/share/stratara for post-install.sh
+install(FILES
+    ${CMAKE_CURRENT_SOURCE_DIR}/installer/kwin/kwinrc
+    ${CMAKE_CURRENT_SOURCE_DIR}/installer/kwin/windowrulesrc
+    DESTINATION ${CMAKE_INSTALL_DATADIR}/stratara
+)
 install(DIRECTORY
     ${CMAKE_CURRENT_SOURCE_DIR}/installer/kwin/scripts/stratara-shell
     DESTINATION ${CMAKE_INSTALL_DATADIR}/kwin/scripts
@@ -246,10 +252,20 @@ install(DIRECTORY
 install(DIRECTORY
     ${CMAKE_CURRENT_SOURCE_DIR}/installer/calamares
     DESTINATION ${CMAKE_INSTALL_DATADIR}/calamares
+    FILE_PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ
+    DIRECTORY_PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE
+)
+
+# Install Calamares scripts with execute permissions
+install(PROGRAMS
+    ${CMAKE_CURRENT_SOURCE_DIR}/installer/calamares/scripts/post-install.sh
+    ${CMAKE_CURRENT_SOURCE_DIR}/installer/calamares/scripts/oem-setup.sh
+    ${CMAKE_CURRENT_SOURCE_DIR}/installer/calamares/scripts/xodusctl
+    DESTINATION ${CMAKE_INSTALL_DATADIR}/calamares/scripts
 )
 
 # Install post-install and OEM scripts
-install(FILES
+install(PROGRAMS
     ${CMAKE_CURRENT_SOURCE_DIR}/installer/calamares/scripts/post-install.sh
     ${CMAKE_CURRENT_SOURCE_DIR}/installer/calamares/scripts/oem-setup.sh
     ${CMAKE_CURRENT_SOURCE_DIR}/installer/calamares/scripts/xodusctl
@@ -280,10 +296,12 @@ install(FILES
 install(DIRECTORY
     ${CMAKE_CURRENT_SOURCE_DIR}/installer/iso
     DESTINATION ${CMAKE_INSTALL_DATADIR}/stratara/iso
+    FILE_PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE
+    DIRECTORY_PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE
 )
 
 # Install build script
-install(FILES
+install(PROGRAMS
     ${CMAKE_CURRENT_SOURCE_DIR}/installer/iso/build-iso.sh
     DESTINATION ${CMAKE_INSTALL_LIBDIR}/stratara
 )

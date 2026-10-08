@@ -1,0 +1,102 @@
+# Stratara GRUB Theme
+# Configuration for the Stratara OS GRUB bootloader theme
+
+# Title
+title-text: "Stratara OS"
+title-font: "NotoSans-Regular 24"
+title-color: "#ffffff"
+
+# Menu
+item_font: "NotoSans-Regular 18"
+selected_item_font: "NotoSans-Bold 18"
+item_color: "#cccccc"
+selected_item_color: "#00d4aa"
+item_height: 36
+item_padding: 10
+
+# Background
+background-color: "#0a0a0c"
+background-image: "grub-bg.svg"
+
+# Border
+border-color: "#333333"
+border-width: 2
+
+# Progress bar
+progress_bar:
+  id: "__timeout__"
+  x: 50%
+  y: 85%
+  width: 60%
+  height: 12
+  bg_color: "#1e1e2e"
+  fg_color: "#00d4aa"
+  border_color: "#333333"
+  border_width: 1
+  font: "NotoSans-Regular 12"
+  text: "@TIMEOUT_NOTIFICATION_LONG@"
+  text_color: "#ffffff"
+
+# Progress bar background
++ progress_bar_bg:
+  left: 0
+  top: 0
+  width: 100%
+  height: 100%
+  image: "progress-bar-bg.svg"
+
+# Progress bar fill
++ progress_bar_fill:
+  left: 0
+  top: 0
+  width: 100%
+  height: 100%
+  image: "progress-bar.svg"
+
+# Boot menu
++ boot_menu:
+  left: 10%
+  top: 30%
+  width: 80%
+  height: 50%
+  item_font: "NotoSans-Regular 18"
+  selected_item_font: "NotoSans-Bold 18"
+  item_color: "#cccccc"
+  selected_item_color: "#00d4aa"
+  item_height: 40
+  item_padding: 15
+  item_spacing: 10
+  scrollbar: true
+  scrollbar_width: 8
+  scrollbar_color: "#333333"
+  scrollbar_thumb_color: "#00d4aa"
+
+# Labels
++ label:
+  left: 50%
+  top: 10%
+  width: 80%
+  height: 40
+  align: "center"
+  font: "NotoSans-Regular 14"
+  color: "#888888"
+  text: "Stratara OS - Linux-native living-room shell"
+
+# Help text
++ label:
+  left: 10%
+  top: 90%
+  width: 80%
+  height: 30
+  align: "center"
+  font: "NotoSans-Regular 12"
+  color: "#666666"
+  text: "Use ↑/↓ to select, Enter to boot, 'e' to edit, 'c' for command line"
+
+# Icon
++ image:
+  left: 5%
+  top: 5%
+  width: 80
+  height: 80
+  file: "grub-bg.svg"
