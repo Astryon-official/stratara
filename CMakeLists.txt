@@ -230,6 +230,26 @@ install(FILES
     DESTINATION ${CMAKE_INSTALL_LIBDIR}/stratara
 )
 
+# Stratara shell Calamares module
+find_package(Calamares QUIET)
+if(CALAMARES_FOUND)
+    add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/installer/calamares/modules/stratara-shell)
+else()
+    message(WARNING "Calamares not found, skipping stratara-shell module")
+endif()
+
+# GRUB theme
+install(DIRECTORY
+    ${CMAKE_CURRENT_SOURCE_DIR}/installer/grub/themes/stratara
+    DESTINATION ${CMAKE_INSTALL_DATADIR}/grub/themes
+)
+
+# Wayland session
+install(FILES
+    ${CMAKE_CURRENT_SOURCE_DIR}/installer/stratara.desktop
+    DESTINATION ${CMAKE_INSTALL_DATADIR}/wayland-sessions
+)
+
 # Desktop file generation
 configure_file(
     ${CMAKE_CURRENT_SOURCE_DIR}/stratara.desktop.in

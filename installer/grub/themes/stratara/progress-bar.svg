@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="800" height="40" viewBox="0 0 800 40" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="progressBg" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#1a1a2e;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#0a0a0c;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="progressFg" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#00aaff;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#0066cc;stop-opacity:1" />
+    </linearGradient>
+    <filter id="progressGlow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="4" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="800" height="40" rx="20" fill="url(#progressBg)"/>
+  <rect x="2" y="2" width="400" height="36" rx="18" fill="url(#progressFg)" filter="url(#progressGlow)"/>
+</svg>

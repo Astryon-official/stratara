@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="1920" height="1080" viewBox="0 0 1920 1080" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0a0a0c;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#1a1a2e;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#16213e;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="logoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#00aaff;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#0066cc;stop-opacity:1" />
+    </linearGradient>
+    <radialGradient id="glowGrad" cx="50%" cy="35%" r="50%">
+      <stop offset="0%" style="stop-color:#00aaff;stop-opacity:0.15" />
+      <stop offset="100%" style="stop-color:#0a0a0c;stop-opacity:0" />
+    </radialGradient>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="8" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="1920" height="1080" fill="url(#bgGrad)"/>
+  
+  <!-- Subtle glow -->
+  <ellipse cx="960" cy="380" rx="400" ry="200" fill="url(#glowGrad)"/>
+  
+  <!-- Grid pattern for TV feel -->
+  <g stroke="#00aaff" stroke-width="1" opacity="0.03">
+    <line x1="0" y1="0" x2="1920" y2="1080"/>
+    <line x1="1920" y1="0" x2="0" y2="1080"/>
+    <line x1="960" y1="0" x2="960" y2="1080"/>
+    <line x1="0" y1="540" x2="1920" y2="540"/>
+  </g>
+  
+  <!-- Corner accents -->
+  <g fill="none" stroke="#00aaff" stroke-width="3" opacity="0.3">
+    <path d="M 60 60 H 180 M 60 60 V 180"/>
+    <path d="M 1860 60 H 1740 M 1860 60 V 180"/>
+    <path d="M 60 1020 H 180 M 60 1020 V 900"/>
+    <path d="M 1860 1020 H 1740 M 1860 1020 V 900"/>
+  </g>
+  
+  <!-- Center logo -->
+  <g transform="translate(960, 480)">
+    <!-- Outer ring -->
+    <circle r="180" fill="none" stroke="url(#logoGrad)" stroke-width="4" opacity="0.3"/>
+    <circle r="150" fill="none" stroke="url(#logoGrad)" stroke-width="2" opacity="0.5"/>
+    
+    <!-- TV/Screen shape -->
+    <rect x="-140" y="-100" width="280" height="200" rx="20" fill="url(#logoGrad)" filter="url(#glow)"/>
+    
+    <!-- Screen content - Stratara "S" -->
+    <text x="0" y="45" font-family="Arial, sans-serif" font-size="120" font-weight="bold" 
+          fill="#0a0a0c" text-anchor="middle" dominant-baseline="middle">S</text>
+    
+    <!-- Signal waves -->
+    <g fill="none" stroke="#00aaff" stroke-width="3" opacity="0.7">
+      <path d="M 280 0 Q 320 -40 360 0 Q 400 40 360 0"/>
+      <path d="M 280 0 Q 320 -20 360 0 Q 400 20 360 0" opacity="0.5"/>
+      <path d="M 280 0 Q 320 -60 360 0 Q 400 60 360 0" opacity="0.3"/>
+    </g>
+  </g>
+  
+  <!-- Version text -->
+  <text x="960" y="750" font-family="Noto Sans, Arial, sans-serif" font-size="24" font-weight="medium" 
+        fill="#ffffff" text-anchor="middle" opacity="0.7">Stratara OS 0.1.0</text>
+  
+  <!-- Bottom indicator -->
+  <rect x="920" y="950" width="80" height="6" rx="3" fill="url(#logoGrad)" opacity="0.8"/>
+</svg>
