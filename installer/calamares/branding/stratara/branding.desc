@@ -1,0 +1,121 @@
+# Stratara OS Calamares Branding
+# This file defines the branding for the Stratara installer
+
+componentName: "stratara"
+version: "0.1.0"
+description: "Stratara OS - Linux-native living-room shell installer branding"
+author: "Astryon"
+license: "GPL-3.0-or-later"
+
+# Window branding
+windowTitle: "Stratara OS Installer"
+windowIcon: "stratara.svg"
+windowWidth: 800
+windowHeight: 600
+
+# Welcome screen branding
+welcome:
+    background: "welcome-bg.png"
+    logo: "stratara-logo.svg"
+    title: "Welcome to Stratara OS"
+    subtitle: "Linux-native living-room shell"
+    description: >
+        Stratara OS is a controller-first, TV-oriented Linux desktop experience
+        inspired by modern console/tvOS interfaces while remaining a real Linux environment.
+
+# Installer sidebar
+sidebar:
+    background: "sidebar-bg.png"
+    logo: "stratara-logo-small.svg"
+    title: "Stratara OS"
+    version: "0.1.0"
+    items:
+        - "Welcome"
+        - "Location"
+        - "Keyboard"
+        - "Partition"
+        - "Users"
+        - "Summary"
+        - "Install"
+        - "Finished"
+
+# Progress bar
+progressbar:
+    background: "progress-bg.png"
+    foreground: "progress-fg.png"
+    border: "progress-border.png"
+
+# Buttons
+buttons:
+    next:
+        normal: "btn-next-normal.png"
+        hover: "btn-next-hover.png"
+        pressed: "btn-next-pressed.png"
+        disabled: "btn-next-disabled.png"
+    back:
+        normal: "btn-back-normal.png"
+        hover: "btn-back-hover.png"
+        pressed: "btn-back-pressed.png"
+        disabled: "btn-back-disabled.png"
+    cancel:
+        normal: "btn-cancel-normal.png"
+        hover: "btn-cancel-hover.png"
+        pressed: "btn-cancel-pressed.png"
+        disabled: "btn-cancel-disabled.png"
+    quit:
+        normal: "btn-quit-normal.png"
+        hover: "btn-quit-hover.png"
+        pressed: "btn-quit-pressed.png"
+        disabled: "btn-quit-disabled.png"
+
+# Colors (for fallback when images not available)
+colors:
+    background: "#0a0a0c"
+    foreground: "#ffffff"
+    accent: "#00aaff"
+    accentHover: "#0088cc"
+    accentPressed: "#006699"
+    disabled: "#444444"
+    error: "#ff4444"
+    warning: "#ffaa00"
+    success: "#44aa44"
+    sidebarBackground: "#1a1a2e"
+    sidebarForeground: "#ffffff"
+    sidebarActiveBackground: "#00aaff"
+    sidebarActiveForeground: "#ffffff"
+
+# Fonts
+fonts:
+    family: "Noto Sans"
+    titleSize: 28
+    subtitleSize: 18
+    bodySize: 14
+    buttonSize: 14
+    smallSize: 12
+
+# Images (relative to branding directory)
+images:
+    - "stratara.svg"
+    - "stratara-logo.svg"
+    - "stratara-logo-small.svg"
+    - "welcome-bg.png"
+    - "sidebar-bg.png"
+    - "progress-bg.png"
+    - "progress-fg.png"
+    - "progress-border.png"
+    - "btn-next-normal.png"
+    - "btn-next-hover.png"
+    - "btn-next-pressed.png"
+    - "btn-next-disabled.png"
+    - "btn-back-normal.png"
+    - "btn-back-hover.png"
+    - "btn-back-pressed.png"
+    - "btn-back-disabled.png"
+    - "btn-cancel-normal.png"
+    - "btn-cancel-hover.png"
+    - "btn-cancel-pressed.png"
+    - "btn-cancel-disabled.png"
+    - "btn-quit-normal.png"
+    - "btn-quit-hover.png"
+    - "btn-quit-pressed.png"
+    - "btn-quit-disabled.png"

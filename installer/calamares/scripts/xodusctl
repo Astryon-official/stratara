@@ -1,0 +1,222 @@
+#!/usr/bin/env python3
+# xodusctl - Command-line tool for Xodus service management
+
+import sys
+import json
+import dbus
+import dbus.exceptions
+import argparse
+
+XODUS_SERVICE = "org.astyrion.Xodus"
+XODUS_PATH = "/org/astyrion/Xodus"
+XODUS_INTERFACE = "org.astyrion.Xodus"
+
+def get_proxy():
+    """Get D-Bus proxy for Xodus service"""
+    try:
+        bus = dbus.SystemBus()
+        proxy = bus.get_object(XODUS_SERVICE, XODUS_PATH)
+        return dbus.Interface(proxy, XODUS_INTERFACE)
+    except dbus.exceptions.DBusException as e:
+        print(f"Error connecting to Xodus service: {e}", file=sys.stderr)
+        sys.exit(1)
+
+def cmd_enroll(args):
+    """Enroll device with Xodus"""
+    proxy = get_proxy()
+    try:
+        result = proxy.RegisterService(args.name, {
+            "type": args.type,
+            "version": "0.1.0",
+            "description": args.description or ""
+        })
+        if result.get("success", False):
+            print(f"Successfully enrolled: {args.name}")
+        else:
+            print(f"Enrollment failed: {result.get('error', 'Unknown error')}", file=sys.stderr)
+            sys.exit(1)
+    except dbus.exceptions.DBusException as e:
+        print(f"Enrollment failed: {e}", file=sys.stderr)
+        sys.exit(1)
+
+def cmd_get_info(args):
+    """Get system info from Xodus"""
+    proxy = get_proxy()
+    try:
+        result = proxy.GetSystemInfo()
+        if args.json:
+            print(json.dumps(dict(result), indent=2))
+        else:
+            for key, value in result.items():
+                print(f"{key}: {value}")
+    except dbus.exceptions.DBusException as e:
+        print(f"Failed to get info: {e}", file=sys.stderr)
+        sys.exit(1)
+
+def cmd_power(args):
+    """Request power action"""
+    proxy = get_proxy()
+    actions = {
+        "shutdown": 0,
+        "reboot": 1,
+        "suspend": 2,
+        "hibernate": 3,
+        "hybrid-sleep": 4
+    }
+    action = actions.get(args.action)
+    if action is None:
+        print(f"Unknown action: {args.action}", file=sys.stderr)
+        sys.exit(1)
+    
+    try:
+        result = proxy.RequestPowerAction(action)
+        if result.get("success", False):
+            print(f"Power action '{args.action}' requested successfully")
+        else:
+            print(f"Power action failed: {result.get('error', 'Unknown error')}", file=sys.stderr)
+            sys.exit(1)
+    except dbus.exceptions.DBusException as e:
+        print(f"Power action failed: {e}", file=sys.stderr)
+        sys.exit(1)
+
+def cmd_hostname(args):
+    """Set hostname"""
+    proxy = get_proxy()
+    try:
+        result = proxy.SetHostname(args.name)
+        if result.get("success", False):
+            print(f"Hostname set to: {args.name}")
+        else:
+            print(f"Failed to set hostname: {result.get('error', 'Unknown error')}", file=sys.stderr)
+            sys.exit(1)
+    except dbus.exceptions.DBusException as e:
+        print(f"Failed to set hostname: {e}", file=sys.stderr)
+        sys.exit(1)
+
+def cmd_locale(args):
+    """Set locale"""
+    proxy = get_proxy()
+    categories = {
+        "language": 0,
+        "region": 1,
+        "keyboard": 2,
+        "timezone": 3
+    }
+    category = categories.get(args.category)
+    if category is None:
+        print(f"Unknown category: {args.category}", file=sys.stderr)
+        sys.exit(1)
+    
+    try:
+        result = proxy.SetLocale(category, args.value)
+        if result.get("success", False):
+            print(f"Locale {args.category} set to: {args.value}")
+        else:
+            print(f"Failed to set locale: {result.get('error', 'Unknown error')}", file=sys.stderr)
+            sys.exit(1)
+    except dbus.exceptions.DBusException as e:
+        print(f"Failed to set locale: {e}", file=sys.stderr)
+        sys.exit(1)
+
+def cmd_list_units(args):
+    """List systemd units"""
+    proxy = get_proxy()
+    try:
+        result = proxy.ListSystemdUnits(args.type)
+        if args.json:
+            print(json.dumps(dict(result), indent=2))
+        else:
+            for name, info in result.items():
+                print(f"{name}: {info.get('active_state', 'unknown')} ({info.get('sub_state', 'unknown')})")
+    except dbus.exceptions.DBusException as e:
+        print(f"Failed to list units: {e}", file=sys.stderr)
+        sys.exit(1)
+
+def cmd_unit_status(args):
+    """Get systemd unit status"""
+    proxy = get_proxy()
+    try:
+        result = proxy.GetSystemdUnitStatus(args.unit)
+        if args.json:
+            print(json.dumps(dict(result), indent=2))
+        else:
+            for key, value in result.items():
+                print(f"{key}: {value}")
+    except dbus.exceptions.DBusException as e:
+        print(f"Failed to get unit status: {e}", file=sys.stderr)
+        sys.exit(1)
+
+def cmd_control_unit(args):
+    """Control systemd unit"""
+    proxy = get_proxy()
+    try:
+        result = proxy.ControlSystemdUnit(args.unit, args.action)
+        if result.get("success", False):
+            print(f"Unit '{args.unit}' {args.action} requested successfully")
+        else:
+            print(f"Unit control failed: {result.get('error', 'Unknown error')}", file=sys.stderr)
+            sys.exit(1)
+    except dbus.exceptions.DBusException as e:
+        print(f"Unit control failed: {e}", file=sys.stderr)
+        sys.exit(1)
+
+def main():
+    parser = argparse.ArgumentParser(description="Xodus service control tool")
+    subparsers = parser.add_subparsers(dest="command", help="Commands")
+    
+    # Enroll command
+    enroll_parser = subparsers.add_parser("enroll", help="Enroll device with Xodus")
+    enroll_parser.add_argument("--name", required=True, help="Device/service name")
+    enroll_parser.add_argument("--type", default="living-room-shell", help="Device type")
+    enroll_parser.add_argument("--description", help="Description")
+    enroll_parser.set_defaults(func=cmd_enroll)
+    
+    # Info command
+    info_parser = subparsers.add_parser("info", help="Get system info")
+    info_parser.add_argument("--json", action="store_true", help="Output as JSON")
+    info_parser.set_defaults(func=cmd_get_info)
+    
+    # Power command
+    power_parser = subparsers.add_parser("power", help="Request power action")
+    power_parser.add_argument("action", choices=["shutdown", "reboot", "suspend", "hibernate", "hybrid-sleep"])
+    power_parser.set_defaults(func=cmd_power)
+    
+    # Hostname command
+    hostname_parser = subparsers.add_parser("hostname", help="Set hostname")
+    hostname_parser.add_argument("name", help="New hostname")
+    hostname_parser.set_defaults(func=cmd_hostname)
+    
+    # Locale command
+    locale_parser = subparsers.add_parser("locale", help="Set locale")
+    locale_parser.add_argument("category", choices=["language", "region", "keyboard", "timezone"])
+    locale_parser.add_argument("value", help="Locale value")
+    locale_parser.set_defaults(func=cmd_locale)
+    
+    # List units command
+    list_parser = subparsers.add_parser("list-units", help="List systemd units")
+    list_parser.add_argument("--type", default="service", help="Unit type (service, timer, socket, etc.)")
+    list_parser.add_argument("--json", action="store_true", help="Output as JSON")
+    list_parser.set_defaults(func=cmd_list_units)
+    
+    # Unit status command
+    status_parser = subparsers.add_parser("unit-status", help="Get unit status")
+    status_parser.add_argument("unit", help="Unit name")
+    status_parser.add_argument("--json", action="store_true", help="Output as JSON")
+    status_parser.set_defaults(func=cmd_unit_status)
+    
+    # Control unit command
+    control_parser = subparsers.add_parser("control-unit", help="Control systemd unit")
+    control_parser.add_argument("unit", help="Unit name")
+    control_parser.add_argument("action", choices=["start", "stop", "restart", "enable", "disable"])
+    control_parser.set_defaults(func=cmd_control_unit)
+    
+    args = parser.parse_args()
+    
+    if not hasattr(args, "func"):
+        parser.print_help()
+        sys.exit(1)
+    
+    args.func(args)
+
+if __name__ == "__main__":
+    main()

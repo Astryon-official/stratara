@@ -8,6 +8,7 @@
 #include <QThread>
 #include <QFuture>
 #include <QtConcurrent/QtConcurrent>
+#include <QHash>
 
 namespace Stratara::System {
 
@@ -28,6 +29,7 @@ private:
 
     mutable QMutex m_mutex;
     QImage m_placeholder;
+    QHash<QString, QImage> m_iconCache;
 };
 
 } // namespace Stratara::System

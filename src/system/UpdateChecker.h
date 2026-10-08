@@ -27,6 +27,8 @@ public:
     Q_INVOKABLE void checkForUpdate(qint64 nowMillis, bool force = false);
     Q_INVOKABLE bool isNewerThanInstalled(const QString &versionTag) const;
 
+    Q_INVOKABLE void setReleasesUrl(const QString &url);
+
 signals:
     void checkFinished(const UpdateResult &result);
 
@@ -43,8 +45,8 @@ private:
     qint64 m_checkTimestamp = 0;
     bool m_forceCheck = false;
     mutable QMutex m_mutex;
+    QString m_releasesUrl;
 
-    static constexpr const char *RELEASES_URL = "https://api.github.com/repos/Astryon-official/Stratara/releases/latest";
     static constexpr qint64 MIN_CHECK_INTERVAL_MILLIS = 5 * 60 * 1000; // 5 minutes
     static constexpr int CONNECT_TIMEOUT_MILLIS = 10000;
     static constexpr int READ_TIMEOUT_MILLIS = 10000;

@@ -31,6 +31,9 @@ MediaManager::MediaManager(QObject *parent)
     m_positionTimer->start();
 
     initDBus();
+
+    // Initial player discovery at startup
+    discoverPlayers();
 }
 
 void MediaManager::initDBus()

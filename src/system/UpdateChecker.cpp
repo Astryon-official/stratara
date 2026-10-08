@@ -15,6 +15,7 @@ UpdateChecker::UpdateChecker(UpdateStore *updateStore, QObject *parent)
     : QObject(parent)
     , m_updateStore(updateStore)
     , m_networkManager(new QNetworkAccessManager(this))
+    , m_releasesUrl("https://api.github.com/repos/Astryon-official/Stratara/releases/latest")
 {
 }
 
@@ -51,7 +52,7 @@ bool UpdateChecker::isNewerThanInstalled(const QString &versionTag) const
 
 void UpdateChecker::fetchLatestRelease()
 {
-    QNetworkRequest request{QUrl(RELEASES_URL)};
+    QNetworkRequest request{QUrl(m_releasesUrl)};
     request.setRawHeader("Accept", "application/vnd.github+json");
     request.setRawHeader("User-Agent", "Stratara/0.1.0");
 
@@ -163,6 +164,12 @@ bool UpdateChecker::isNewer(const QString &latestTag, const QString &currentVers
         }
     }
     return false;
+}
+
+void UpdateChecker::setReleasesUrl(const QString &url)
+{
+    QMutexLocker locker(&m_mutex);
+    m_releasesUrl = url;
 }
 
 QString UpdateChecker::installedVersionName() const

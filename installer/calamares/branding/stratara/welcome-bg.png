@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="800" height="600" viewBox="0 0 800 600" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0a0a0c;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#1a1a2e;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#16213e;stop-opacity:1" />
+    </linearGradient>
+    <radialGradient id="glowGrad" cx="50%" cy="30%" r="60%">
+      <stop offset="0%" style="stop-color:#00aaff;stop-opacity:0.15" />
+      <stop offset="100%" style="stop-color:#0a0a0c;stop-opacity:0" />
+    </radialGradient>
+  </defs>
+  
+  <rect width="800" height="600" fill="url(#bgGrad)"/>
+  
+  <!-- Subtle glow -->
+  <ellipse cx="400" cy="180" rx="300" ry="150" fill="url(#glowGrad)"/>
+  
+  <!-- Grid pattern for TV feel -->
+  <g stroke="#00aaff" stroke-width="0.5" opacity="0.03">
+    <line x1="0" y1="0" x2="800" y2="600"/>
+    <line x1="800" y1="0" x2="0" y2="600"/>
+    <line x1="400" y1="0" x2="400" y2="600"/>
+    <line x1="0" y1="300" x2="800" y2="300"/>
+  </g>
+  
+  <!-- Corner accents -->
+  <g fill="none" stroke="#00aaff" stroke-width="2" opacity="0.2">
+    <path d="M 40 40 H 120 M 40 40 V 120"/>
+    <path d="M 760 40 H 680 M 760 40 V 120"/>
+    <path d="M 40 560 H 120 M 40 560 V 480"/>
+    <path d="M 760 560 H 680 M 760 560 V 480"/>
+  </g>
+</svg>

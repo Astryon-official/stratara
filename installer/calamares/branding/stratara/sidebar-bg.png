@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="200" height="600" viewBox="0 0 200 600" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="sidebarGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#1a1a2e;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#0a0a0c;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="accentGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#00aaff;stop-opacity:0.3" />
+      <stop offset="100%" style="stop-color:#0066cc;stop-opacity:0.1" />
+    </linearGradient>
+  </defs>
+  
+  <rect width="200" height="600" fill="url(#sidebarGrad)"/>
+  
+  <!-- Top accent line -->
+  <rect x="0" y="0" width="200" height="3" fill="url(#accentGrad)"/>
+  
+  <!-- Bottom accent line -->
+  <rect x="0" y="597" width="200" height="3" fill="url(#accentGrad)"/>
+  
+  <!-- Subtle pattern -->
+  <g stroke="#00aaff" stroke-width="0.5" opacity="0.05">
+    <line x1="0" y1="0" x2="200" y2="600"/>
+    <line x1="200" y1="0" x2="0" y2="600"/>
+  </g>
+</svg>

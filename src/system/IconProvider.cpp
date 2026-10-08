@@ -36,10 +36,22 @@ QImage IconProvider::requestImage(const QString &id, QSize *size, const QSize &r
         return m_placeholder;
     }
 
+    QImage image;
+    // Check cache first
+    if (m_iconCache.contains(id)) {
+        image = m_iconCache[id];
+        if (size) *size = image.size();
+        // Scale to requested size if needed
+        if (requestedSize.isValid() && image.size() != requestedSize) {
+            image = image.scaled(requestedSize, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+        }
+        if (size) *size = image.size();
+        return image;
+    }
+
     // Search in standard icon directories
     QString iconPath = resolveIconPath(id);
 
-    QImage image;
     if (!iconPath.isEmpty() && QFileInfo::exists(iconPath)) {
         // Load from file
         image = QImage(iconPath);
@@ -77,15 +89,16 @@ QImage IconProvider::requestImage(const QString &id, QSize *size, const QSize &r
 void IconProvider::preloadIcon(const QString &iconName)
 {
     QThreadPool::globalInstance()->start([this, iconName]() {
+        QMutexLocker locker(&m_mutex);
         QImage image = loadIconSync(iconName, QSize(256, 256));
-        Q_UNUSED(image);
+        m_iconCache[iconName] = image;
     });
 }
 
 void IconProvider::clearCache()
 {
     QMutexLocker locker(&m_mutex);
-    // No cache to clear now
+    m_iconCache.clear();
 }
 
 QImage IconProvider::loadIconSync(const QString &iconName, const QSize &requestedSize)

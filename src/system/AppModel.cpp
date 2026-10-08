@@ -240,7 +240,7 @@ void AppModel::parseDesktopFile(const QString &filePath)
         } else if (key == "Exec") {
             // Remove field codes (%f, %u, %F, %U, etc.)
             app.execCommand = value;
-            app.execCommand.remove(QRegularExpression("%[fFuUdDnNickvm]"));
+            app.execCommand.remove(QRegularExpression("%[fFuUdDnVVm]"));
             app.execCommand = app.execCommand.trimmed();
         } else if (key == "Icon") {
             app.iconName = value;

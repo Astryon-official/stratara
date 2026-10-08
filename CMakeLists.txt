@@ -216,6 +216,20 @@ install(DIRECTORY
     DESTINATION ${CMAKE_INSTALL_DATADIR}/kwin/scripts
 )
 
+# Calamares installer configuration
+install(DIRECTORY
+    ${CMAKE_CURRENT_SOURCE_DIR}/installer/calamares
+    DESTINATION ${CMAKE_INSTALL_DATADIR}/calamares
+)
+
+# Install post-install and OEM scripts
+install(FILES
+    ${CMAKE_CURRENT_SOURCE_DIR}/installer/calamares/scripts/post-install.sh
+    ${CMAKE_CURRENT_SOURCE_DIR}/installer/calamares/scripts/oem-setup.sh
+    ${CMAKE_CURRENT_SOURCE_DIR}/installer/calamares/scripts/xodusctl
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/stratara
+)
+
 # Desktop file generation
 configure_file(
     ${CMAKE_CURRENT_SOURCE_DIR}/stratara.desktop.in
