@@ -29,7 +29,6 @@ jobs:
           host: linux
           target: desktop
           arch: linux_gcc_64
-          archives: qtbase qtdeclarative qtsvg qtwayland
           aqtversion: ==3.2.*
 
       - name: Install build dependencies
