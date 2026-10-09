@@ -22,10 +22,10 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install Qt 6.8.3
+      - name: Install Qt 6.9.3
         uses: jurplel/install-qt-action@v4
         with:
-          version: 6.8.3
+          version: 6.9.3
           host: linux
           target: desktop
           arch: linux_gcc_64
