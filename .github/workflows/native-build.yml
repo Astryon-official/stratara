@@ -15,17 +15,17 @@ concurrency:
 jobs:
   linux-build:
     name: Build Linux Native Components
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-22.04
     timeout-minutes: 30
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install Qt 6.9.3
+      - name: Install Qt 6.5.3
         uses: jurplel/install-qt-action@v4
         with:
-          version: 6.9.3
+          version: 6.5.3
           host: linux
           target: desktop
           arch: linux_gcc_64
