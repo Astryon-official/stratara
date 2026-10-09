@@ -1,0 +1,32 @@
+name: Stratara Native Build
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: native-build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  linux-build:
+    name: Build Linux Native Components
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends build-essential cmake ninja-build pkg-config qt6-base-dev qt6-declarative-dev qt6-svg-dev qt6-wayland-dev libgl1-mesa-dev libglib2.0-dev libinput-dev libudev-dev libpipewire-0.3-dev libbluetooth-dev libnm-dev libupower-glib-dev libsystemd-dev
+
+      - name: Configure CMake
+        run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build Stratara components
+        run: cmake --build build --parallel 2
