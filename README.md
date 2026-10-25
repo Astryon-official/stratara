@@ -1,6 +1,6 @@
 <div align="center">
 
-# 🌌 Stratara
+# Stratara
 
 ### A modern, tvOS-inspired Linux shell and operating system experience.
 
